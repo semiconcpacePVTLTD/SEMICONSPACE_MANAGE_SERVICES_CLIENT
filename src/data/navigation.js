@@ -26,15 +26,11 @@ const menus = [
   //   ],
   // },
 {
-  id: 2,
-  name: "Services",
-  path: "/service-1",   // 👈 parent goes to service-1
-  children: [
-    { id: 1, name: "PCB Services", path: "/service-single-v3" },
-    { id: 2, name: "Mechanical Design", path: "/service-single-v3" },
-    // { id: 3, name: "Projects", path: "/project-1" }
-  ],
-},
+    id: 2,
+    name: "Services",
+    path: "/service-1",
+    children: [], // 👈 keep empty, will be filled from API
+  },
 
   // {
   //   id: 3,

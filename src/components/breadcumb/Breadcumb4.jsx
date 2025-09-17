@@ -33,7 +33,7 @@ export default function Breadcumb4() {
           />
           <img
             className="service-v1-vector bounce-y d-none d-lg-block"
-            src="/images/vector-img/vector-service-v1.png"
+            src="/images/vector-img/vector-service-v1.webp"
             alt="vector-img"
           />
 

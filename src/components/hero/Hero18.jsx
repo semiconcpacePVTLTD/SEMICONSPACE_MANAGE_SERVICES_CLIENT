@@ -13,7 +13,7 @@ const roleOptions = [
 
 const popularTags = ["Designer", "Developer", "Web", "IOS", "PHP", "Senior"];
 
-export default function Hero18() {
+export default function Hero18({ service, services }) {
   const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState(null);
 
@@ -41,6 +41,7 @@ export default function Hero18() {
               <div className="d-sm-flex align-items-center mt30 animate-up-3">
                 <Link
                   to="/service-1"
+                  state={{ services }} // <-- pass services here
                   className="ud-btn btn-thm4 me-3 bdrs120 btn-1"
                 >
                   Explore services

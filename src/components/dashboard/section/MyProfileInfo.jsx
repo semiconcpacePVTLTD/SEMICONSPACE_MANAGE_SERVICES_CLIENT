@@ -7,7 +7,20 @@ import ProfileDetails from "./ProfileDetails";
 import Skill from "./Skill";
 import WorkExperience from "./WorkExperience";
 
-export default function MyProfileInfo() {
+export default function MyProfileInfo({profile}) {
+  // Normalize role_id and nested shape safely
+  const roleId = Array.isArray(profile?.profile?.role_id)
+    ? profile.profile.role_id
+    : profile?.profile?.role_id != null
+    ? [profile.profile.role_id]
+    : [];
+  const isCustomer = roleId.includes(1);
+
+  // If no profile data yet, avoid rendering children that depend on it
+  if (!profile || !profile.profile) {
+    return null;
+  }
+
   return (
     <>
       <div className="dashboard__content hover-bgc-color">
@@ -18,17 +31,21 @@ export default function MyProfileInfo() {
           <div className="col-lg-9">
             <div className="dashboard_title_area">
               <h2>My Profile</h2>
-              <p className="text">Lorem ipsum dolor sit amet, consectetur.</p>
+              <p className="text">Your profile is your digital handshake – make it count!</p>
             </div>
           </div>
         </div>
         <div className="row">
           <div className="col-xl-12">
-            <ProfileDetails />
-            <Skill />
-            <Education />
-            <WorkExperience />
-            <Award />
+            <ProfileDetails profile={profile.profile} isCustomer={isCustomer} />
+            {!isCustomer && (
+              <>
+                <Skill />
+                <Education />
+                <WorkExperience />
+                <Award />
+              </>
+            )}
             <ChangePassword />
             <ConfirmPassword />
           </div>
