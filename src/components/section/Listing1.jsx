@@ -7,7 +7,7 @@ import listingStore from "@/store/listingStore";
 import priceStore from "@/store/priceStore";
 import PopularServiceSlideCard1 from "../card/PopularServiceSlideCard1";
 
-export default function Listing1({ services }) {
+export default function Listing1({ services, CardComponent }) {
   const getDeliveryTime = listingStore((state) => state.getDeliveryTime);
   const getPriceRange = priceStore((state) => state.priceRange);
   const getLevel = listingStore((state) => state.getLevel);
@@ -21,8 +21,8 @@ export default function Listing1({ services }) {
   const rawServices = Array.isArray(services)
     ? services
     : services?.success && Array.isArray(services?.data)
-    ? services.data
-    : [];
+      ? services.data
+      : [];
 
   // 2) Normalize items to the structure expected by cards/filters
   const normalized = rawServices.map((svc) => {
@@ -36,6 +36,7 @@ export default function Listing1({ services }) {
       id: svc.id,
       title: svc.name,
       gallery, // used to decide slide vs. static card
+      img: gallery?.[0] || "/images/header-logo.svg",
       category: svc.shortDescription || svc.description || "",
       rating: 4.5,
       review: 12,
@@ -49,6 +50,8 @@ export default function Listing1({ services }) {
       tool: svc.tool || "",
       sort: svc.sort || "best-seller",
       description: svc.description || "",
+      // Keep original for specialized cards
+      raw: svc,
     };
   });
 
@@ -98,7 +101,9 @@ export default function Listing1({ services }) {
             ) : (
               filtered.map((item, i) => (
                 <div key={i} className="col-sm-6 col-xl-3">
-                  {item?.gallery ? (
+                  {CardComponent ? (
+                    <CardComponent data={item} />
+                  ) : item?.gallery ? (
                     <PopularServiceSlideCard1 data={item} />
                   ) : (
                     <TrendingServiceCard1 data={item} />
