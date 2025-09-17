@@ -1,79 +1,80 @@
-import { Tooltip } from "react-tooltip";
+import React, { useMemo } from "react";
 
-export default function WorkExperience() {
+export default function WorkExperience({ details = {}, editable = false, onChange }) {
+  const experience = useMemo(() => {
+    const raw = details?.experience;
+    return Array.isArray(raw) ? raw : [];
+  }, [details]);
+
+  if (editable) {
+    return (
+      <div className="ps-widget bgc-white bdrs4 p30 mb30 overflow-hidden position-relative">
+        <div className="bdrb1 pb15 mb30 d-sm-flex justify-content-between">
+          <h5 className="list-title">Work & Experience</h5>
+        </div>
+        <div className="position-relative">
+          {experience.length === 0 ? (
+            <p className="text-muted mb-2">No experience entries yet.</p>
+          ) : null}
+          <div className="d-flex flex-column gap-3">
+            {experience.map((ex, idx) => (
+              <div key={idx} className="row g-2">
+                <div className="col-sm-6">
+                  <input className="form-control" defaultValue={ex?.position || ''} placeholder="Position" onBlur={(e)=>{
+                    const next=[...experience]; next[idx]={...next[idx], position:e.target.value}; onChange?.(next);
+                  }} />
+                </div>
+                <div className="col-sm-6">
+                  <input className="form-control" defaultValue={ex?.company || ''} placeholder="Company" onBlur={(e)=>{
+                    const next=[...experience]; next[idx]={...next[idx], company:e.target.value}; onChange?.(next);
+                  }} />
+                </div>
+                <div className="col-sm-6">
+                  <input className="form-control" defaultValue={ex?.start_year || ''} placeholder="Start Year" onBlur={(e)=>{
+                    const next=[...experience]; next[idx]={...next[idx], start_year:e.target.value}; onChange?.(next);
+                  }} />
+                </div>
+                <div className="col-sm-6">
+                  <input className="form-control" defaultValue={ex?.end_year || ''} placeholder="End Year (or Present)" onBlur={(e)=>{
+                    const next=[...experience]; next[idx]={...next[idx], end_year:e.target.value}; onChange?.(next);
+                  }} />
+                </div>
+                <div className="col-12">
+                  <textarea className="form-control" rows={2} defaultValue={ex?.description || ''} placeholder="Description" onBlur={(e)=>{
+                    const next=[...experience]; next[idx]={...next[idx], description:e.target.value}; onChange?.(next);
+                  }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="ps-widget bgc-white bdrs4 p30 mb30 overflow-hidden position-relative">
         <div className="bdrb1 pb15 mb30 d-sm-flex justify-content-between">
-          <h5 className="list-title">Work &amp; Experience</h5>
-          <a className="add-more-btn text-thm">
-            <i className="icon far fa-plus mr10" />
-            Add Experience
-          </a>
+          <h5 className="list-title">Work & Experience</h5>
         </div>
         <div className="position-relative">
-          <div className="educational-quality">
-            <div className="m-circle text-thm">M</div>
-            <div className="wrapper mb40 position-relative">
-              <div className="del-edit">
-                <div className="d-flex">
-                  <a className="icon me-2" id="edit">
-                    <Tooltip anchorSelect="#edit" className="ui-tooltip">
-                      Edit
-                    </Tooltip>
-                    <span className="flaticon-pencil" />
-                  </a>
-                  <a className="icon" id="delete">
-                    <Tooltip anchorSelect="#delete" className="ui-tooltip">
-                      Delete
-                    </Tooltip>
-                    <span className="flaticon-delete" />
-                  </a>
+          {experience.length === 0 ? (
+            <p className="text-muted mb-0">No experience entries yet.</p>
+          ) : (
+            <div className="educational-quality">
+              {experience.map((ex, idx) => (
+                <div key={idx} className={`wrapper ${idx !== experience.length - 1 ? "mb30" : "mb0"} position-relative`}>
+                  <span className="tag">
+                    {ex?.start_year ?? ""}{ex?.start_year || ex?.end_year ? " - " : ""}{ex?.end_year ?? "Present"}
+                  </span>
+                  <h5 className="mt15">{ex?.position || "Position"}</h5>
+                  <h6 className="text-thm">{ex?.company || "Company"}</h6>
+                  {ex?.description && <p className="mb-0">{ex.description}</p>}
                 </div>
-              </div>
-              <span className="tag">2012 - 2014</span>
-              <h5 className="mt15">UX Designer</h5>
-              <h6 className="text-thm">Dropbox</h6>
-              <p>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin a
-                ipsum tellus. Interdum et malesuada fames ac ante ipsum{" "}
-                <br className="d-none d-lg-block" /> primis in faucibus.
-              </p>
+              ))}
             </div>
-            <div className="m-circle before-none text-thm">M</div>
-            <div className="wrapper mb30 position-relative">
-              <div className="del-edit">
-                <div className="d-flex">
-                  <a className="icon me-2" id="edit">
-                    <Tooltip anchorSelect="#edit" className="ui-tooltip">
-                      Edit
-                    </Tooltip>
-                    <span className="flaticon-pencil" />
-                  </a>
-                  <a className="icon" id="delete">
-                    <Tooltip anchorSelect="#delete" className="ui-tooltip">
-                      Delete
-                    </Tooltip>
-                    <span className="flaticon-delete" />
-                  </a>
-                </div>
-              </div>
-              <span className="tag">2008 - 2012</span>
-              <h5 className="mt15">Art Director</h5>
-              <h6 className="text-thm">amazon</h6>
-              <p className="mb-0">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin a
-                ipsum tellus. Interdum et malesuada fames ac ante ipsum{" "}
-                <br className="d-none d-lg-block" /> primis in faucibus.
-              </p>
-            </div>
-          </div>
-          <div className="text-start">
-            <a className="ud-btn btn-thm">
-              Save
-              <i className="fal fa-arrow-right-long" />
-            </a>
-          </div>
+          )}
         </div>
       </div>
     </>
