@@ -13,7 +13,6 @@ export default function ServicePageSingle1() {
   return (
     <>
       <MetaComponent meta={metadata} />
-      <TabSection1 />
       <Breadcumb3 path={["Home", "Services", "Design & Creative"]} />
       <Breadcumb8 />
       <ServiceDetail1 />

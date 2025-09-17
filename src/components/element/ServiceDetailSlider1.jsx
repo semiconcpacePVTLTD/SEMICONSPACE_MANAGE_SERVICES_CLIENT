@@ -12,8 +12,9 @@ const gigImages = [
   "/images/listings/service-details-1.jpg",
 ];
 
-export default function ServiceDetailSlider1() {
+export default function ServiceDetailSlider1({ images }) {
   const [thumbsSwiper, setThumbsSwiper] = useState(null);
+  const slides = Array.isArray(images) && images.length ? images : gigImages;
 
   return (
     <>
@@ -48,7 +49,7 @@ export default function ServiceDetailSlider1() {
               </div>
               <div className="details">
                 <h5 className="title">Location</h5>
-                <p className="mb-0 text">New York</p>
+                <p className="mb-0 text">India</p>
               </div>
             </div>
           </div>
@@ -69,7 +70,7 @@ export default function ServiceDetailSlider1() {
               modules={[FreeMode, Navigation, Thumbs]}
               className="mySwiper2"
             >
-              {gigImages.map((item, i) => (
+              {slides.map((item, i) => (
                 <SwiperSlide key={i}>
                   <img src={item} alt="gallery" className="w-100 h-auto" />
                 </SwiperSlide>
@@ -93,7 +94,7 @@ export default function ServiceDetailSlider1() {
             modules={[FreeMode, Navigation, Thumbs]}
             className="mySwiper ui-service-gig-slder-bottom"
           >
-            {gigImages.map((item, i) => (
+            {slides.map((item, i) => (
               <SwiperSlide key={i}>
                 <img src={item} alt="image" className="w-100" />
               </SwiperSlide>
