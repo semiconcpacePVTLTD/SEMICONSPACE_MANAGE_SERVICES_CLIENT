@@ -95,7 +95,7 @@ export default function ServiceDetail3() {
                             Services
                           </h2>
                         )}
-                        <div className="list-meta mt30">
+                        {/* <div className="list-meta mt30">
                           <a className="list-inline-item mb5-sm" href="#">
                             <span className="position-relative mr10">
                               <img
@@ -107,10 +107,10 @@ export default function ServiceDetail3() {
                             </span>
                             <span className="fz14">Eleanor Pena</span>
                           </a>
-                          {/* <p className="mb-0 dark-color fz14 list-inline-item ml25 ml15-sm mb5-sm ml0-xs">
+                          <p className="mb-0 dark-color fz14 list-inline-item ml25 ml15-sm mb5-sm ml0-xs">
                             <i className="fas fa-star vam fz10 review-color me-2"></i>{" "}
                             4.82 94 reviews
-                          </p> */}
+                          </p>
                           <p className="mb-0 dark-color fz14 list-inline-item ml25 ml15-sm mb5-sm ml0-xs">
                             <i className="flaticon-file-1 vam fz20 me-2"></i> 2
                             Order in Queue
@@ -119,7 +119,7 @@ export default function ServiceDetail3() {
                             <i className="flaticon-website vam fz20 me-2"></i>{" "}
                             902 Views
                           </p>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                     <div className="row">
@@ -129,30 +129,38 @@ export default function ServiceDetail3() {
                             <span className="flaticon-calendar" />
                           </div>
                           <div className="details">
-                            <h5 className="title">Delivery Time</h5>
-                            <p className="mb-0 text">1-3 Days</p>
+                            <h5 className="title">On-time Delivery</h5>
+                            <p className="mb-0 text">
+                              Projects delivered as scheduled
+                            </p>
                           </div>
                         </div>
                       </div>
+
                       <div className="col-sm-6 col-md-4">
                         <div className="iconbox-style1 contact-style d-flex align-items-start mb30">
                           <div className="icon flex-shrink-0">
-                            <span className="flaticon-goal" />
+                            <span className="flaticon-chat" />
                           </div>
                           <div className="details">
-                            <h5 className="title">English Level</h5>
-                            <p className="mb-0 text">Professional</p>
+                            <h5 className="title">Technical Support</h5>
+                            <p className="mb-0 text">
+                              24/7 assistance for your projects
+                            </p>
                           </div>
                         </div>
                       </div>
+
                       <div className="col-sm-6 col-md-4">
                         <div className="iconbox-style1 contact-style d-flex align-items-start mb30">
                           <div className="icon flex-shrink-0">
-                            <span className="flaticon-tracking" />
+                            <span className="flaticon-money" />
                           </div>
                           <div className="details">
-                            <h5 className="title">Location</h5>
-                            <p className="mb-0 text">New York</p>
+                            <h5 className="title">Cost Efficiency</h5>
+                            <p className="mb-0 text">
+                              Affordable solutions without compromise
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -288,173 +296,190 @@ export default function ServiceDetail3() {
                 </div>
               </div>
               <div className="col-lg-4">
-              <div className="column">
-  {isMatchedScreen ? (
-    <Sticky>
-      {({ style }) => (
-        <div className="scrollbalance-inner" style={style}>
-          <div className="blog-sidebar ms-lg-auto">
-           <div
-  className="px30 bdr1 pt30 pb30 mb30 bg-white bdrs12 default-box-shadow1 d-flex flex-column"
-  style={{ maxHeight: "900px", minHeight: "700px" }} // increased height
->
-  <h4>PCB Freelancers</h4>
-  <div className="mt20 flex-grow-1 overflow-auto">
-    {freelancers.slice(0, 8).map((f, idx) => (
-      <div
-        key={idx}
-        className="d-flex align-items-center pb20 mb20 bdrb1"
-      >
-        <img
-          className="rounded-circle mr15"
-          src={f.avatar}
-          alt={f.name}
-          width="48"
-          height="48"
-        />
-        <div className="flex-grow-1">
-          <div className="d-flex justify-content-between align-items-center">
-            <h6 className="mb0">{f.name}</h6>
-          </div>
-          <span className="fz14 fw500">${f.rate}/hr</span>
-          <p className="text mb5">{f.location}</p>
-          <p className="text mb0 fz14">
-            <i className="fas fa-star review-color me-1"></i>{" "}
-            {f.rating} ({f.reviews} reviews) • {f.success}% Job Success
-          </p>
-        </div>
-        <button
-          className="ml15"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "transparent",
-            color: "#2563eb",
-            padding: "8px 16px",
-            borderRadius: "30px",
-            border: "2px solid #2563eb",
-            cursor: "pointer",
-            fontWeight: "500",
-            transition: "all 0.3s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#2563eb";
-            e.currentTarget.style.color = "#fff";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.color = "#2563eb";
-          }}
-          onClick={() => navigate("/freelancer-single")}
-        >
-          <span style={{ fontSize: "20px", marginBottom: "4px" }}>👤</span>
-          <span>View Profile</span>
-        </button>
-      </div>
-    ))}
-  </div>
+                <div className="column">
+                  {isMatchedScreen ? (
+                    <Sticky>
+                      {({ style }) => (
+                        <div className="scrollbalance-inner" style={style}>
+                          <div className="blog-sidebar ms-lg-auto">
+                            <div
+                              className="px30 bdr1 pt30 pb30 mb30 bg-white bdrs12 default-box-shadow1 d-flex flex-column"
+                              style={{ maxHeight: "900px", minHeight: "700px" }} // increased height
+                            >
+                              <h4>PCB Freelancers</h4>
+                              <div className="mt20 flex-grow-1 overflow-auto">
+                                {freelancers.slice(0, 8).map((f, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="d-flex align-items-center pb20 mb20 bdrb1"
+                                  >
+                                    <img
+                                      className="rounded-circle mr15"
+                                      src={f.avatar}
+                                      alt={f.name}
+                                      width="48"
+                                      height="48"
+                                    />
+                                    <div className="flex-grow-1">
+                                      <div className="d-flex justify-content-between align-items-center">
+                                        <h6 className="mb0">{f.name}</h6>
+                                      </div>
+                                      <span className="fz14 fw500">
+                                        ${f.rate}/hr
+                                      </span>
+                                      <p className="text mb5">{f.location}</p>
+                                      <p className="text mb0 fz14">
+                                        <i className="fas fa-star review-color me-1"></i>{" "}
+                                        {f.rating} ({f.reviews} reviews) •{" "}
+                                        {f.success}% Job Success
+                                      </p>
+                                    </div>
+                                    <button
+                                      className="ml15"
+                                      style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: "transparent",
+                                        color: "#2563eb",
+                                        padding: "8px 16px",
+                                        borderRadius: "30px",
+                                        border: "2px solid #2563eb",
+                                        cursor: "pointer",
+                                        fontWeight: "500",
+                                        transition: "all 0.3s ease",
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor =
+                                          "#2563eb";
+                                        e.currentTarget.style.color = "#fff";
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor =
+                                          "transparent";
+                                        e.currentTarget.style.color = "#2563eb";
+                                      }}
+                                      onClick={() =>
+                                        navigate("/freelancer-single")
+                                      }
+                                    >
+                                      <span
+                                        style={{
+                                          fontSize: "20px",
+                                          marginBottom: "4px",
+                                        }}
+                                      >
+                                        👤
+                                      </span>
+                                      <span>View Profile</span>
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
 
-  {/* View all freelancers button at bottom */}
-  <div className="text-center mt20">
-    <button
-      className="px-4 py-2 rounded-3"
-      style={{
-        backgroundColor: "#2563eb",
-        color: "#fff",
-        border: "none",
-        cursor: "pointer",
-        fontWeight: "500",
-      }}
-    onClick={() => navigate("/freelancer-1")}
-    >
-      View All Freelancers
-    </button>
-  </div>
-</div>
-
-          </div>
-        </div>
-      )}
-    </Sticky>
-  ) : (
-    <div className="scrollbalance-inner">
-      <div className="blog-sidebar ms-lg-auto">
-        <div
-          className="px30 bdr1 pt30 pb30 mb30 bg-white bdrs12 default-box-shadow1 d-flex flex-column"
-          style={{ maxHeight: "600px" }}
-        >
-          <h4>PCB Freelancers</h4>
-          <div className="mt20 flex-grow-1 overflow-auto">
-            {freelancers.slice(0, 8).map((f, idx) => (
-              <div
-                key={idx}
-                className="d-flex align-items-center pb20 mb20 bdrb1"
-              >
-                <img
-                  className="rounded-circle mr15"
-                  src={f.avatar}
-                  alt={f.name}
-                  width="48"
-                  height="48"
-                />
-                <div className="flex-grow-1">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <h6 className="mb0">{f.name}</h6>
-                    <span className="fz14 fw500">${f.rate}/hr</span>
-                  </div>
-                  <p className="text mb5">{f.location}</p>
-                  <p className="text mb0 fz14">
-                    <i className="fas fa-star review-color me-1"></i>{" "}
-                    {f.rating} ({f.reviews} reviews) • {f.success}% Job Success
-                  </p>
+                              {/* View all freelancers button at bottom */}
+                              <div className="text-center mt20">
+                                <button
+                                  className="px-4 py-2 rounded-3"
+                                  style={{
+                                    backgroundColor: "#2563eb",
+                                    color: "#fff",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    fontWeight: "500",
+                                  }}
+                                  onClick={() => navigate("/freelancer-1")}
+                                >
+                                  View All Freelancers
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </Sticky>
+                  ) : (
+                    <div className="scrollbalance-inner">
+                      <div className="blog-sidebar ms-lg-auto">
+                        <div
+                          className="px30 bdr1 pt30 pb30 mb30 bg-white bdrs12 default-box-shadow1 d-flex flex-column"
+                          style={{ maxHeight: "600px" }}
+                        >
+                          <h4>PCB Freelancers</h4>
+                          <div className="mt20 flex-grow-1 overflow-auto">
+                            {freelancers.slice(0, 8).map((f, idx) => (
+                              <div
+                                key={idx}
+                                className="d-flex align-items-center pb20 mb20 bdrb1"
+                              >
+                                <img
+                                  className="rounded-circle mr15"
+                                  src={f.avatar}
+                                  alt={f.name}
+                                  width="48"
+                                  height="48"
+                                />
+                                <div className="flex-grow-1">
+                                  <div className="d-flex justify-content-between align-items-center">
+                                    <h6 className="mb0">{f.name}</h6>
+                                    <span className="fz14 fw500">
+                                      ${f.rate}/hr
+                                    </span>
+                                  </div>
+                                  <p className="text mb5">{f.location}</p>
+                                  <p className="text mb0 fz14">
+                                    <i className="fas fa-star review-color me-1"></i>{" "}
+                                    {f.rating} ({f.reviews} reviews) •{" "}
+                                    {f.success}% Job Success
+                                  </p>
+                                </div>
+                                <button
+                                  className="ml15"
+                                  style={{
+                                    backgroundColor: "#2563eb",
+                                    color: "#fff",
+                                    padding: "8px 16px",
+                                    borderRadius: "8px",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    transition: "background-color 0.2s ease",
+                                  }}
+                                  onMouseEnter={(e) =>
+                                    (e.currentTarget.style.backgroundColor =
+                                      "#1d4ed8")
+                                  }
+                                  onMouseLeave={(e) =>
+                                    (e.currentTarget.style.backgroundColor =
+                                      "#2563eb")
+                                  }
+                                >
+                                  Message Freelancer
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          {/* View all freelancers button */}
+                          <div className="text-center mt20">
+                            <button
+                              className="px-4 py-2 rounded-3"
+                              style={{
+                                backgroundColor: "#2563eb",
+                                color: "#fff",
+                                border: "none",
+                                cursor: "pointer",
+                                fontWeight: "500",
+                              }}
+                              onClick={() => navigate("/freelancers")}
+                            >
+                              View All Freelancers
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <button
-                  className="ml15"
-                  style={{
-                    backgroundColor: "#2563eb",
-                    color: "#fff",
-                    padding: "8px 16px",
-                    borderRadius: "8px",
-                    border: "none",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s ease",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#1d4ed8")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#2563eb")
-                  }
-                >
-                  Message Freelancer
-                </button>
-              </div>
-            ))}
-          </div>
-          {/* View all freelancers button */}
-          <div className="text-center mt20">
-            <button
-              className="px-4 py-2 rounded-3"
-              style={{
-                backgroundColor: "#2563eb",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: "500",
-              }}
-              onClick={() => navigate("/freelancers")}
-            >
-              View All Freelancers
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )}
-</div>
-
               </div>
             </div>
           </div>
