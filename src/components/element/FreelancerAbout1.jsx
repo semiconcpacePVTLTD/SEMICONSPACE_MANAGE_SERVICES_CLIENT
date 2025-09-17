@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
-export default function FreelancerAbout1() {
+export default function FreelancerAbout1({ data }) {
+  const location = data?.profile_details?.location ?? data?.profile?.location ?? "N/A";
   return (
     <>
       <div className="price-widget pt25 bdrs8">
@@ -14,7 +15,7 @@ export default function FreelancerAbout1() {
               <i className="flaticon-place text-thm2 pe-2 vam" />
               Location
             </span>
-            <span>London, UK</span>
+            <span>{location}</span>
           </a>
           <a className="d-flex align-items-center justify-content-between bdrb1 pb-2">
             <span className="text">
@@ -53,14 +54,14 @@ export default function FreelancerAbout1() {
           </a>
         </div>
         <div className="d-grid">
-  <Link to="/contact" className="ud-btn btn-thm">
-    Schedule meeting
-<i
-  className="fal fa-video-camera"
-  style={{ marginLeft: "8px", transform: "rotate(0deg)" }}
-/>
-  </Link>
-</div>
+          <Link to="/contact" className="ud-btn btn-thm">
+            Schedule meeting
+            <i
+              className="fal fa-video-camera"
+              style={{ marginLeft: "8px", transform: "rotate(0deg)" }}
+            />
+          </Link>
+        </div>
 
       </div>
     </>
