@@ -1,96 +1,62 @@
 import { Link } from "react-router-dom";
-import { useLocation } from "react-router-dom";
-
-import { useState } from "react";
 
 export default function TrendingServiceCard1({ data }) {
-  const [isFavActive, setFavActive] = useState(false);
-
-  const { pathname } = useLocation();
+  // Limit category to 100 characters
+  const maxLength = 100;
+  const categoryText =
+    data.category && data.category.length > maxLength
+      ? data.category.slice(0, maxLength) + "..."
+      : data.category;
 
   return (
-    <>
-      <div
-        className={`listing-style1 ${
-          pathname === "/home-4" ? "default-box-shadow1 bdrs8" : ""
-        } ${pathname === "/home-6" ? "default-box-shadow1 border-0" : ""}
-                 ${
-                   pathname === "/home-9"
-                     ? "border-0 default-box-shadow1 bdrs16"
-                     : ""
-                 } 
-                ${pathname === "/home-10" ? "bdrs16" : ""}
-                ${pathname === "/home-17" ? "bdrs16" : ""}
-                ${pathname === "/home-15" ? "bdrs16" : ""}
-                ${pathname === "/home-12" ? "bdrs16" : ""}
-                 ${
-                   pathname === "/home-5"
-                     ? "style4 default-box-shadow1 mb60"
-                     : ""
-                 } 
-                 ${
-                   pathname === "/home-18"
-                     ? "style4 default-box-shadow1 mb60"
-                     : ""
-                 } 
-                 ${
-                   pathname === "/home-19"
-                     ? "style4 default-box-shadow1 mb60"
-                     : ""
-                 } 
-                ${pathname === "/home-8" ? "style5" : ""}`}
-      >
-        <div className="list-thumb">
-          <img
-            className="w-100 h-100 object-fit-cover"
-            src={data.img}
-            alt="thumbnail"
-          />
-          <a
-            onClick={() => setFavActive(!isFavActive)}
-            className={`listing-fav fz12 ${isFavActive ? "ui-fav-active" : ""}`}
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition p-4 flex flex-col">
+      {/* Thumbnail */}
+      <div className="relative w-full h-40 mb-3">
+        <img
+          className="w-full h-full object-cover rounded-lg"
+          src={data.img}
+          alt={data.title}
+        />
+      </div>
+
+      {/* Content */}
+      <div className="flex flex-col flex-1">
+        <h5 className="text-lg font-semibold leading-snug mb-1 line-clamp-2">
+          <Link
+            to={`/service-single/${data.id}`}
+            className="hover:text-blue-600 transition"
           >
-            <span className="far fa-heart" />
-          </a>
-        </div>
-        <div className={`list-content ${pathname === "/home-8" ? "px-0" : ""}`}>
-          {/* <p className="list-text body-color fz14 mb-1">{data.category}</p> */}
-          <h5 className="list-title">
-            <Link to={`/service-single/${data.id}`}>
-              {data.title.slice(0, 50) + "..."}
+            {data.title}
+          </Link>
+        </h5>
+
+        {/* Category with "Read more" */}
+        <p className="text-sm text-gray-500 mb-3 min-h-[2.5rem]">
+          {categoryText}
+          {data.category && data.category.length > maxLength && (
+            <Link
+              to={`/service-single/${data.id}`}
+              className="text-blue-600 ml-1 hover:underline"
+            >
+              Read more
             </Link>
-          </h5>
-          {/* <div className="review-meta d-flex align-items-center">
-            <i className="fas fa-star fz10 review-color me-2" />
-            <p className="mb-0 body-color fz14">
-              <span className="dark-color me-2">{data.rating}</span>
-              {data.review} reviews
-            </p>
-          </div> */}
-          {/* <hr className="my-2" />
-          <div className="list-meta d-flex justify-content-between align-items-center mt15">
-            <a className="d-flex" href="#">
-              <span className="position-relative mr10">
-                <img
-                  className="rounded-circle wa"
-                  src={data.author.img}
-                  alt="Freelancer Photo"
-                />
-                <span className="online-badges" />
-              </span>
-              <span className="fz14">{data.author.name}</span>
-            </a>
-            <div className="budget">
-              <p className="mb-0 body-color">
-                Starting at
-                <span className="fz17 fw500 dark-color ms-1">
-                  ${data.price}
-                </span>
-              </p>
-            </div>
-          </div> */}
+          )}
+        </p>
+
+        {/* Price + Button */}
+        <div className="mt-auto flex items-center justify-between">
+          <p className="text-base font-medium text-gray-700">
+            <span className="text-gray-500 text-sm">Starting at</span>{" "}
+            <span className="text-blue-600 font-bold">Rs.{data.price}</span>
+          </p>
+          <Link
+            to={`/service-single/${data.id}`}
+            className="bg-blue-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
+          >
+            Book Now
+          </Link>
         </div>
       </div>
-    </>
+    </div>
   );
 }

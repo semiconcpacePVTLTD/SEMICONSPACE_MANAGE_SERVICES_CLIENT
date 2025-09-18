@@ -382,3 +382,45 @@ a {
 .ui-social-media a:hover i {
   color: #5bbb7b !important;
 }
+
+
+/* Timeline wrapper */
+.timeline {
+  position: relative;
+  padding-left: 30px;
+  margin-left: 10px;
+  border-left: 2px solid #e0e0e0; /* vertical line */
+}
+
+/* Timeline item */
+.timeline-item {
+  position: relative;
+  margin-bottom: 30px;
+  padding-left: 20px;
+}
+
+/* Dot on the line */
+.timeline-dot {
+  position: absolute;
+  left: -11px;
+  top: 5px;
+  width: 16px;
+  height: 16px;
+  background: #29984c; /* primary blue */
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #2563eb22;
+}
+
+/* Content inside */
+.timeline-content {
+  background: #fff;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #eaeaea;
+}
+
+/* Remove line above first item */
+.timeline-item.before-none::before {
+  display: none;
+}
