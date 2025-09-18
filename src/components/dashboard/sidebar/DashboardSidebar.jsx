@@ -2,7 +2,9 @@ import { dasboardNavigation } from "@/data/dashboard";
 import { Link, useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
 
-export default function DashboardSidebar() {
+export default function DashboardSidebar({ profile }) {
+  console.log("Sidebar received profile:", profile);
+
   const { pathname } = useLocation();
 
   const handleLogout = () => {
@@ -17,22 +19,49 @@ export default function DashboardSidebar() {
       cancelButtonText: "Cancel",
     }).then((result) => {
       if (result.isConfirmed) {
-        // clear auth data
         localStorage.removeItem("auth");
         localStorage.removeItem("access_token");
         localStorage.setItem("isLoggedIn", "false");
-
-        // redirect to login
         window.location.href = "/login";
       }
     });
   };
 
+  // Compute role synchronously from provided profile or fallback to localStorage
+  const authData = (() => {
+    try { return JSON.parse(localStorage.getItem("auth")); } catch { return null; }
+  })();
+  const roleIdsRaw = profile?.profile?.role_id ?? authData?.data?.role_id ?? [];
+  const isFreelancer = Array.isArray(roleIdsRaw)
+    ? roleIdsRaw.includes(2)
+    : Number(roleIdsRaw) === 2;
+
+  // Filter: show Wallet only for freelancers; others see all except Wallet
+  const navigation = dasboardNavigation.filter((item) => {
+    if (item.name === "Wallet" && !isFreelancer) return false;
+    return true;
+  });
+
   return (
     <div className="dashboard__sidebar d-none d-lg-block">
+      {/* Optional profile info at the top */}
+      <div className="px30 py20 border-bottom">
+        <div className="d-flex align-items-center">
+          <img
+            src={profile?.profile?.profile_image || "/images/team/default-user.png"}
+            alt="profile"
+            className="rounded-circle"
+            style={{ width: "50px", height: "50px", objectFit: "cover" }}
+          />
+          <div className="ml15">
+            <h6 className="mb-0">{profile?.profile?.name || "User"}</h6>
+            <small className="text-muted">{profile?.profile?.email}</small>
+          </div>
+        </div>
+      </div>
+
       <div className="dashboard_sidebar_list">
-        <p className="fz15 fw400 ff-heading pl30">Start</p>
-        {dasboardNavigation.map((item, i) => (
+        {navigation.map((item, i) => (
           <div key={i} className="sidebar_list_item mb-1">
             {item.name === "Logout" ? (
               <a

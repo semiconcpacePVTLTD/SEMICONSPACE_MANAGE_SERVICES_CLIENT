@@ -53,6 +53,7 @@ import DasbPageProposal from "./pages/dashboard/proposal";
 import DasbPageSaved from "./pages/dashboard/saved";
 import DasbPageMessage from "./pages/dashboard/message";
 import DasbPageReviews from "./pages/dashboard/reviews";
+import DashboardWalletPage from "./pages/dashboard/wallet";
 import DasbPageInvoice from "./pages/dashboard/invoice";
 import DasbPagePayouts from "./pages/dashboard/payouts";
 import DasbPageStatements from "./pages/dashboard/statements";
@@ -172,6 +173,7 @@ export default function RoutesComponent() {
           <Route path="saved" element={<DasbPageSaved />} />
           <Route path="message" element={<DasbPageMessage />} />
           <Route path="reviews" element={<DasbPageReviews />} />
+          <Route path="wallet" element={<DashboardWalletPage />} />
           <Route path="invoice" element={<DasbPageInvoice />} />
           <Route path="payouts" element={<DasbPagePayouts />} />
           <Route path="statements" element={<DasbPageStatements />} />

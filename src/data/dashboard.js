@@ -27,7 +27,7 @@ export const dasboardNavigation = [
     id: 5,
     name: "Wallet",
     icon: "flaticon-review-1",
-    path: "/reviews",
+    path: "/wallet",
   },
   // {
   //   id: 5,
