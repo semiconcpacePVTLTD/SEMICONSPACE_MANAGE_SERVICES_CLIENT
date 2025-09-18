@@ -11,6 +11,7 @@ import ServiceDetailSlider2 from "../element/ServiceDetailSlider2";
 
 import { useParams } from "react-router-dom";
 import { product1 } from "@/data/product";
+import { useEffect, useState } from "react";
 
 export default function ServiceDetail3({ service, loading }) {
   const isMatchedScreen = useScreen(1216);
@@ -21,36 +22,52 @@ export default function ServiceDetail3({ service, loading }) {
   // Use service prop if provided, otherwise fallback to product1 lookup
   const data = service || (id ? product1.find((item) => item.id == id) : null);
 
-  // PCB-specific sidebar freelancer data
-  const freelancers = [
-    {
-      name: "Alice Kim",
-      avatar: "/images/team/fl-d-1.png",
-      location: "San Jose, CA",
-      rate: 45,
-      rating: 4.9,
-      reviews: 120,
-      success: 98,
-    },
-    {
-      name: "Rahul Verma",
-      avatar: "/images/team/fl-d-2.png",
-      location: "Bengaluru, IN",
-      rate: 35,
-      rating: 4.8,
-      reviews: 86,
-      success: 96,
-    },
-    {
-      name: "Sophia Martinez",
-      avatar: "/images/team/fl-d-3.png",
-      location: "Austin, TX",
-      rate: 55,
-      rating: 5.0,
-      reviews: 64,
-      success: 99,
-    },
-  ];
+  // PCB-specific sidebar freelancers fetched dynamically (same as freelancer-1)
+  const [sidebarFreelancers, setSidebarFreelancers] = useState([]);
+  const [sidebarLoading, setSidebarLoading] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchSidebar = async () => {
+      try {
+        setSidebarLoading(true);
+        const host = import.meta.env.VITE_BACKEND_HOST || "192.168.1.30";
+        const port =
+          import.meta.env.VITE_BACKEND_PROFILE_API_PORT ||
+          import.meta.env.VITE_BACKEND_PROFILE_PORT ||
+          "8003";
+        const url = `http://${host}:${port}/profile-service/freelance`;
+        const res = await fetch(url, { signal: controller.signal });
+        const json = await res.json();
+        setSidebarFreelancers(json?.data || []);
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          console.error("Failed to load sidebar freelancers", e);
+        }
+      } finally {
+        setSidebarLoading(false);
+      }
+    };
+    fetchSidebar();
+    return () => controller.abort();
+  }, []);
+
+  // Normalize to sidebar card shape
+  const sidebarList = (Array.isArray(sidebarFreelancers) ? sidebarFreelancers : [])
+    .slice(0, 8)
+    .map((f, idx) => ({
+      id: f?.uuid || f?.id || idx + 1,
+      name: f?.name ?? f?.title ?? "Unknown",
+      avatar: f?.avatarUrl || "/images/team/fl-d-1.png",
+      location: f?.location ?? "—",
+      rate: typeof f?.hourlyRate === "number" ? f.hourlyRate : undefined,
+      rating: f?.rating ?? undefined,
+      reviews: f?.reviews ?? undefined,
+      success:
+        typeof f?.job_success === "number"
+          ? f.job_success
+          : f?.jobSuccess ?? undefined,
+    }));
 
   // PCB-related projects under About section
   const projects = [
@@ -305,7 +322,7 @@ export default function ServiceDetail3({ service, loading }) {
                             >
                               <h4>PCB Freelancers</h4>
                               <div className="mt20 flex-grow-1 overflow-auto">
-                                {freelancers.slice(0, 8).map((f, idx) => (
+                                {sidebarList.map((f, idx) => (
                                   <div
                                     key={idx}
                                     className="d-flex align-items-center pb20 mb20 bdrb1"
@@ -358,7 +375,7 @@ export default function ServiceDetail3({ service, loading }) {
                                         e.currentTarget.style.color = "#2563eb";
                                       }}
                                       onClick={() =>
-                                        navigate("/freelancer-single")
+                                        navigate(`/freelancer-single/${f.id}`)
                                       }
                                     >
                                       <span
@@ -405,7 +422,7 @@ export default function ServiceDetail3({ service, loading }) {
                         >
                           <h4>PCB Freelancers</h4>
                           <div className="mt20 flex-grow-1 overflow-auto">
-                            {freelancers.slice(0, 8).map((f, idx) => (
+                            {sidebarList.map((f, idx) => (
                               <div
                                 key={idx}
                                 className="d-flex align-items-center pb20 mb20 bdrb1"
