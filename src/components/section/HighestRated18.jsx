@@ -30,7 +30,7 @@ export default function HighestRated18() {
           <div className="col-lg-3">
             <div className="text-lg-end mb-2">
               <Link to="/freelancer-1" className="ud-btn2">
-                All Services <i className="fal fa-arrow-right-long"></i>
+                All Freelancers <i className="fal fa-arrow-right-long"></i>
               </Link>
             </div>
           </div>

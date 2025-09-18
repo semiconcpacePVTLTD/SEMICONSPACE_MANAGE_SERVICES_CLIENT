@@ -259,9 +259,30 @@ a {
   color: #5bbb7b !important;
 }
 
-.ui-navigation .ui-child-active {
-  background-color: #f0efec !important;
-  border-left: 2px solid #5bbb7b !important;
+/* Keep active route styling on submenu items */
+.ui-navigation .sub-menu li.ui-child-active,
+.ui-navigation .sub-menu li:hover {
+  background-color: #f5f5f5 !important; /* grey */
+  border-left: 3px solid #5bbb7b !important; /* green */
+}
+
+/* Account dropdown styling to match site design */
+.author-dropdown .dropdown-menu {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  padding: 8px 0;
+}
+.author-dropdown .dropdown-item {
+  padding: 10px 16px;
+  display: block;
+  color: var(--headings-color, #2b2b2b);
+  font-size: 14px;
+  text-decoration: none;
+}
+.author-dropdown .dropdown-item:hover {
+  background: #f5f5f5;
 }
 
 .employee-single-slider .next-btn {

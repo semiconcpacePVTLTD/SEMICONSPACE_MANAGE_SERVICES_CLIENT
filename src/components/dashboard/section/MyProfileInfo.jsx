@@ -15,6 +15,7 @@ export default function MyProfileInfo({profile}) {
     ? [profile.profile.role_id]
     : [];
   const isCustomer = roleId.includes(1);
+  const isFreelancer = roleId.includes(2);
 
   // If no profile data yet, avoid rendering children that depend on it
   if (!profile || !profile.profile) {
@@ -37,17 +38,17 @@ export default function MyProfileInfo({profile}) {
         </div>
         <div className="row">
           <div className="col-xl-12">
-            <ProfileDetails profile={profile.profile} isCustomer={isCustomer} />
-            {!isCustomer && (
+            <ProfileDetails profile={profile.profile} details={profile.profile_details} isCustomer={isCustomer} canEditDetails={!isCustomer && isFreelancer} />
+            {/* {!isCustomer && (
               <>
-                <Skill />
-                <Education />
-                <WorkExperience />
-                <Award />
+                <Skill details={profile.profile_details} editable={isFreelancer} />
+                <Education details={profile.profile_details} editable={isFreelancer} />
+                <WorkExperience details={profile.profile_details} editable={isFreelancer} />
+                <Award details={profile.profile_details} />
               </>
-            )}
-            <ChangePassword />
-            <ConfirmPassword />
+            )} */}
+            {/* <ChangePassword /> */}
+            {/* <ConfirmPassword /> */}
           </div>
         </div>
       </div>

@@ -6,18 +6,27 @@ export default function Navigation({ services = [] }) {
   const { pathname } = useLocation();
 
   // Build dynamic children from services API
-  const dynamicServices = services.map((srv, index) => ({
-    id: index + 1,
-    name: srv.name, // 👈 from API response (like "PCB Layout")
-    path: `/service/${srv.id || index + 1}`, // give each its own path
-  }));
+  const dynamicServices = services.map((srv, index) => {
+    const id = srv?.id ?? srv?._id ?? index + 1;
+    const name = srv?.name ?? srv?.title ?? `Service ${index + 1}`;
+    return {
+      id,
+      name,
+      path: `/service-single/${id}`,
+      state: { service: srv },
+    };
+  });
 
   // Merge into menus (clone to avoid mutating)
   const mergedMenus = menus.map((menu) =>
     menu.id === 2
-      ? { ...menu, children: dynamicServices } // replace children
+      ? { ...menu, children: dynamicServices }
       : menu
   );
+
+  // Helper to truncate text
+  const truncate = (text, length = 28) =>
+    text.length > length ? text.slice(0, length) + "..." : text;
 
   return (
     <ul
@@ -28,41 +37,30 @@ export default function Navigation({ services = [] }) {
       }`}
     >
       {mergedMenus.map((item, i) => (
-        <li
-          key={i}
-          className={`visible_list menu-active ${
-            item.id === 1 ? "home-menu-parent" : ""
-          } `}
-        >
+        <li key={i} className={`visible_list ${item.id === 1 ? "home-menu-parent" : ""}`}>
           {item.children ? (
             item.path ? (
               <Link
                 to={item.path}
-                className={`list-item ${
-                  isActiveNavigation(pathname, item) ? "ui-active" : ""
-                }`}
+                className={`list-item ${isActiveNavigation(pathname, item) ? "ui-active" : ""}`}
               >
-                <span className="title">{item.name}</span>
-                {item.children && <span className="arrow "></span>}
+                <span className="title">{truncate(item.name)}</span>
+                {item.children && <span className="arrow"></span>}
               </Link>
             ) : (
               <a
-                className={`list-item ${
-                  isActiveNavigation(pathname, item) ? "ui-active" : ""
-                }`}
+                className={`list-item ${isActiveNavigation(pathname, item) ? "ui-active" : ""}`}
               >
-                <span className="title">{item.name}</span>
-                {item.children && <span className="arrow "></span>}
+                <span className="title">{truncate(item.name)}</span>
+                {item.children && <span className="arrow"></span>}
               </a>
             )
           ) : (
             <Link
               to={item.path}
-              className={`list-item ${
-                item.path === pathname ? "ui-active" : ""
-              }`}
+              className={`list-item ${item.path === pathname ? "ui-active" : ""}`}
             >
-              <span className="title">{item.name}</span>
+              <span className="title">{truncate(item.name)}</span>
             </Link>
           )}
 
@@ -71,15 +69,14 @@ export default function Navigation({ services = [] }) {
               {item.children.map((item2, i2) => (
                 <li
                   key={i2}
-                  className={`menu-active ${
-                    isActiveNavigation(pathname, item2) ||
-                    item2.path === pathname
+                  className={`${
+                    isActiveNavigation(pathname, item2) || item2.path === pathname
                       ? "ui-child-active"
                       : ""
                   }`}
                 >
-                  <Link to={item2.path}>
-                    <span className="title">{item2.name}</span>
+                  <Link to={item2.path} state={item2.state}>
+                    <span className="title">{truncate(item2.name)}</span>
                   </Link>
                 </li>
               ))}
@@ -90,3 +87,4 @@ export default function Navigation({ services = [] }) {
     </ul>
   );
 }
+
