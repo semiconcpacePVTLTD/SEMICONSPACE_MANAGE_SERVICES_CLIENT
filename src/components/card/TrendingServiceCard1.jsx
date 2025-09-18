@@ -54,20 +54,20 @@ export default function TrendingServiceCard1({ data }) {
           </a>
         </div>
         <div className={`list-content ${pathname === "/home-8" ? "px-0" : ""}`}>
-          <p className="list-text body-color fz14 mb-1">{data.category}</p>
+          {/* <p className="list-text body-color fz14 mb-1">{data.category}</p> */}
           <h5 className="list-title">
             <Link to={`/service-single/${data.id}`}>
-              {data.title.slice(0, 40) + "..."}
+              {data.title.slice(0, 50) + "..."}
             </Link>
           </h5>
-          <div className="review-meta d-flex align-items-center">
+          {/* <div className="review-meta d-flex align-items-center">
             <i className="fas fa-star fz10 review-color me-2" />
             <p className="mb-0 body-color fz14">
               <span className="dark-color me-2">{data.rating}</span>
               {data.review} reviews
             </p>
-          </div>
-          <hr className="my-2" />
+          </div> */}
+          {/* <hr className="my-2" />
           <div className="list-meta d-flex justify-content-between align-items-center mt15">
             <a className="d-flex" href="#">
               <span className="position-relative mr10">
@@ -88,7 +88,7 @@ export default function TrendingServiceCard1({ data }) {
                 </span>
               </p>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </>
