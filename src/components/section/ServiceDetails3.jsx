@@ -115,31 +115,7 @@ export default function ServiceDetail3({ service, loading }) {
                             Services
                           </h2>
                         )}
-                        {/* <div className="list-meta mt30">
-                          <a className="list-inline-item mb5-sm" href="#">
-                            <span className="position-relative mr10">
-                              <img
-                                className="rounded-circle"
-                                src="/images/team/fl-d-1.png"
-                                alt="Freelancer Photo"
-                              />
-                              <span className="online-badge"></span>
-                            </span>
-                            <span className="fz14">Eleanor Pena</span>
-                          </a>
-                          <p className="mb-0 dark-color fz14 list-inline-item ml25 ml15-sm mb5-sm ml0-xs">
-                            <i className="fas fa-star vam fz10 review-color me-2"></i>{" "}
-                            4.82 94 reviews
-                          </p>
-                          <p className="mb-0 dark-color fz14 list-inline-item ml25 ml15-sm mb5-sm ml0-xs">
-                            <i className="flaticon-file-1 vam fz20 me-2"></i> 2
-                            Order in Queue
-                          </p>
-                          <p className="mb-0 dark-color fz14 list-inline-item ml25 ml15-sm mb5-sm ml0-xs">
-                            <i className="flaticon-website vam fz20 me-2"></i>{" "}
-                            902 Views
-                          </p>
-                        </div> */}
+
                       </div>
                     </div>
                     <div className="row">
@@ -189,310 +165,240 @@ export default function ServiceDetail3({ service, loading }) {
 
                   <ServiceDetailSlider2 images={data?.imgURLs} />
                   <div className="service-about">
-                    <div className="px30 bdr1 pt30 pb-0 mb30 bg-white bdrs12 wow fadeInUp default-box-shadow1">
-                      <h4>About</h4>
-                      <p className="text mb30" style={{ whiteSpace: "pre-line" }}>
-                        {loading ? "Loading..." : data?.longDescription || data?.description || "No description available."}
-                      </p>
+                    <div className="row g-4">
+                      {/* About Card */}
+                      <div className="col-12">
+                        <div className="p-4 bg-white rounded shadow-sm h-100">
+                          <h5 className="fw600 mb2 d-flex align-items-center">
+                            <i className="fas fa-info-circle me-2 text-primary"></i> About
+                          </h5>
+                          <p
+                            className="text mb0"
+                            style={{ whiteSpace: "pre-line", lineHeight: "1.6" }}
+                          >
+                            {loading
+                              ? "Loading..."
+                              : data?.longDescription ||
+                              data?.description ||
+                              "No description available."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Capabilities */}
                       {data?.capabilities && (
-                        <>
-                          <p className="text mb-0">Capabilities:</p>
-                          <p className="text mb30" style={{ whiteSpace: "pre-line" }}>
-                            {data.capabilities}
-                          </p>
-                        </>
+                        <div className="col-md-6">
+                          <div className="p-4 bg-white rounded shadow-sm h-100">
+                            <h6 className="fw600 mb2 d-flex align-items-center">
+                              <i className="fas fa-cogs me-2 text-success"></i> Capabilities
+                            </h6>
+                            <ul className="list-unstyled mb0" style={{ lineHeight: "1.4" }}>
+                              <li>High-speed DDR/USB/Ethernet routing with impedance control</li>
+                              <li>RF/BLE/Wi-Fi layout with ground stitching and matching</li>
+                              <li>Power electronics: DC-DC, protections, thermal design</li>
+                              <li>EMC/EMI best practices and compliance-oriented layout</li>
+                              <li>Rapid prototyping and small-batch production support</li>
+                            </ul>
+                          </div>
+                        </div>
                       )}
+
+                      {/* Tools */}
                       {data?.tools && (
-                        <p className="text mb30" style={{ whiteSpace: "pre-line" }}>
-                          Tools: {data.tools}
-                        </p>
+                        <div className="col-md-6">
+                          <div className="p-4 bg-white rounded shadow-sm h-100">
+                            <h6 className="fw600 mb3 d-flex align-items-center">
+                              <i className="fas fa-wrench me-2 text-warning"></i> Tools
+                            </h6>
+                            <div className="d-flex flex-wrap gap-2">
+                              {["Altium Designer", "KiCad", "OrCAD (on request)"].map((tool, i) => (
+                                <span
+                                  key={i}
+                                  className="px-3 py-1 rounded-pill bg-light border text-dark small"
+                                  style={{ fontWeight: 500 }}
+                                >
+                                  {tool}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       )}
+
+                      {/* Additional Info */}
                       {data?.other1 && (
-                        <p className="text mb30" style={{ whiteSpace: "pre-line" }}>
-                          {data.other1}
-                        </p>
+                        <div className="col-md-6">
+                          <div className="p-4 bg-white rounded shadow-sm h-100">
+                            <h6 className="fw600 mb2 d-flex align-items-center">
+                              <i className="fas fa-lightbulb me-2 text-info"></i> Board types
+                            </h6>
+                            <ul className="list-unstyled mb0" style={{ lineHeight: "1.4" }}>
+                              <li>2–8 layers, HDI (on request)</li>
+                              <li>Rigid / Rigid-Flex</li>
+                            </ul>
+                          </div>
+                        </div>
                       )}
+
+                      {/* More Details */}
+                      {/* Deliverables */}
+                      {data?.deliverables && (
+                        <div className="col-md-6">
+                          <div className="p-4 bg-white rounded shadow-sm h-100">
+                            <h6 className="fw600 mb3 d-flex align-items-center">
+                              <i className="fas fa-box-open me-2 text-success"></i> Deliverables
+                            </h6>
+                            <div className="d-flex flex-wrap gap-2">
+                              {["Schematics", "PCB files", "Gerbers", "BoM", "Fab & Assy files"].map(
+                                (item, i) => (
+                                  <span
+                                    key={i}
+                                    className="px-3 py-1 rounded-pill bg-light border text-dark small"
+                                    style={{ fontWeight: 500 }}
+                                  >
+                                    {item}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+
+
                       {data?.other2 && (
-                        <p className="text mb30" style={{ whiteSpace: "pre-line" }}>
-                          {data.other2}
-                        </p>
+                        <div className="col-md-6">
+                          <div className="p-4 bg-white rounded shadow-sm h-100">
+                            <h6 className="fw600 mb2">
+                              <i className="fas fa-folder-open me-2 text-danger"></i> More Details
+                            </h6>
+                            <p
+                              className="text mb0"
+                              style={{ whiteSpace: "pre-line", lineHeight: "1.5" }}
+                            >
+                              {data.other2}
+                            </p>
+                          </div>
+                        </div>
                       )}
-                      <div className="d-flex align-items-start mb50">
-                        <div className="list1">
-                          <h6>Design tools</h6>
-                          <p className="text mb-0">Altium Designer, KiCad</p>
-                          <p className="text">OrCAD (on request)</p>
+
+                      {/* Static Info Cards */}
+                      <div className="col-md-4">
+                        <div className="p-4 bg-white rounded shadow-sm h-100">
+                          <h6 className="fw600 mb2">
+                            <i className="fas fa-mobile-alt me-2 text-purple"></i> App type
+                          </h6>
+                          <p className="text mb0">Business, Food &amp; Drink</p>
+                          <p className="text mb0">Graphics &amp; Design</p>
                         </div>
-                        <div className="list1 ml80">
-                          <h6>Board types</h6>
-                          <p className="text mb-0">
-                            2–8 layers, HDI (on request)
-                          </p>
-                          <p className="text">Rigid / Rigid‑Flex</p>
+                      </div>
+
+                      <div className="col-md-4">
+                        <div className="p-4 bg-white rounded shadow-sm h-100">
+                          <h6 className="fw600 mb2">
+                            <i className="fas fa-pencil-ruler me-2 text-secondary"></i> Design tools
+                          </h6>
+                          <p className="text mb0">Adobe XD, Figma</p>
+                          <p className="text mb0">Adobe Photoshop</p>
                         </div>
-                        <div className="list1 ml80">
-                          <h6>Deliverables</h6>
-                          <p className="text">
-                            Schematics, PCB files, Gerbers, BoM, Fab &amp; Assy
-                            files
-                          </p>
+                      </div>
+
+                      <div className="col-md-4">
+                        <div className="p-4 bg-white rounded shadow-sm h-100">
+                          <h6 className="fw600 mb2">
+                            <i className="fas fa-desktop me-2 text-primary"></i> Device
+                          </h6>
+                          <p className="text mb0">Mobile, Desktop</p>
                         </div>
                       </div>
                     </div>
-                    {/* <hr className="opacity-100 mb60" /> */}
-                    {/* <div className="px30 bdr1 pt30 pb-0 mb30 bg-white bdrs12 wow fadeInUp default-box-shadow1">
-                      <h4>Related Projects</h4>
-                      <div className="row mt30 mb40">
-                        {projects.map((p, i) => (
-                          <div key={i} className="col-12 mb20">
-                            <div className="bdr1 bdrs12 p30 d-flex align-items-start justify-content-between">
-                              <div>
-                                <h5 className="mb10">{p.title}</h5>
-                                <p className="text mb10">{p.description}</p>
-                                <p className="text mb0">
-                                  <strong>{p.budget}</strong> •{" "}
-                                  <span className="text-muted">
-                                    Posted {p.posted}
-                                  </span>
-                                </p>
-                              </div>
-                              <div className="ml20 d-flex align-items-center">
-                                <button
-                                  style={{
-                                    backgroundColor: "transparent",
-                                    color: "#16a34a",
-                                    padding: "8px 18px",
-                                    borderRadius: "30px", // pill-style
-                                    border: "2px solid #16a34a",
-                                    cursor: "pointer",
-                                    fontWeight: "500",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                    transition: "all 0.3s ease",
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor =
-                                      "#16a34a";
-                                    e.currentTarget.style.color = "#fff";
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor =
-                                      "transparent";
-                                    e.currentTarget.style.color = "#16a34a";
-                                  }}
-                                >
-                                  Open Project{" "}
-                                  <i className="fal fa-arrow-right-long"></i>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div> */}
-                    {/* <hr className="opacity-100 mb60" /> */}
-                    {/* <div className="px30 bdr1 pt30 pb-0 mb30 bg-white bdrs12 wow fadeInUp default-box-shadow1">
-                      <h4>Frequently Asked Questions</h4>
-                      <ServiceDetailFaq1 />{" "}
-                    </div> */}
-                    {/* <hr className="opacity-100 mb60" /> */}
-                    {/* <div className="px30 bdr1 pt30 pb-0 mb30 bg-white bdrs12 wow fadeInUp default-box-shadow1">
-                      <h4>Add Extra Services</h4>
-                      <ServiceDetailExtra1 />{" "}
-                    </div> */}
-                    {/* <hr className="opacity-100 mb15" /> */}
-                    {/* <div className="px30 bdr1 pt30 pb-0 mb30 bg-white bdrs12 wow fadeInUp default-box-shadow1">
-                      <ServiceDetailReviewInfo1 />
-                      <ServiceDetailComment1 />
-                    </div> */}
                   </div>
+
                 </div>
               </div>
               <div className="col-lg-4">
                 <div className="column">
-                  {isMatchedScreen ? (
-                    <Sticky>
-                      {({ style }) => (
-                        <div className="scrollbalance-inner" style={style}>
-                          <div className="blog-sidebar ms-lg-auto">
-                            <div
-                              className="px30 bdr1 pt30 pb30 mb30 bg-white bdrs12 default-box-shadow1 d-flex flex-column"
-                              style={{ maxHeight: "900px", minHeight: "700px" }} // increased height
-                            >
-                              <h4>PCB Freelancers</h4>
-                              <div className="mt20 flex-grow-1 overflow-auto">
-                                {sidebarList.map((f, idx) => (
+
+                  <Sticky>
+                    {({ style }) => (
+                      <div className="scrollbalance-inner" style={style}>
+                        <div className="blog-sidebar ms-lg-auto">
+                          <div
+                            className="px20 bdr1 pt20 pb20 mb30 bg-white bdrs12 default-box-shadow1 d-flex flex-column"
+                            style={{ maxHeight: "600px", minHeight: "400px" }}
+                          >
+                            <h5 className="mb20 text-center">PCB Freelancers</h5>
+
+                            <div className="flex-grow-1">
+                              {sidebarList
+                                .sort(() => 0.5 - Math.random()) // shuffle array
+                                .slice(0, 4) // pick 3
+                                .map((f, idx) => (
                                   <div
                                     key={idx}
-                                    className="d-flex align-items-center pb20 mb20 bdrb1"
+                                    className="d-flex align-items-center mb15 pb15 bdrb1"
                                   >
+                                    {/* Avatar */}
                                     <img
-                                      className="rounded-circle mr15"
+                                      className="rounded-circle me-3"
                                       src={f.avatar}
                                       alt={f.name}
-                                      width="48"
-                                      height="48"
+                                      width="50"
+                                      height="50"
                                     />
+
+                                    {/* Details */}
                                     <div className="flex-grow-1">
-                                      <div className="d-flex justify-content-between align-items-center">
-                                        <h6 className="mb0">{f.name}</h6>
-                                      </div>
-                                      <span className="fz14 fw500">
-                                        ${f.rate}/hr
-                                      </span>
-                                      <p className="text mb5">{f.location}</p>
-                                      <p className="text mb0 fz14">
-                                        <i className="fas fa-star review-color me-1"></i>{" "}
-                                        {f.rating} ({f.reviews} reviews) •{" "}
-                                        {f.success}% Job Success
-                                      </p>
+                                      <h6 className="mb5">{f.name}</h6>
+                                      <p className="fz14 fw500 mb2">{f.success}% Success Rate</p>
+                                      <p className="text fz14 mb0">{f.location}</p>
                                     </div>
+
+                                    {/* Action Button */}
                                     <button
-                                      className="ml15"
+                                      className="px-3 py-1 rounded-pill"
                                       style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        backgroundColor: "transparent",
-                                        color: "#2563eb",
-                                        padding: "8px 16px",
-                                        borderRadius: "30px",
-                                        border: "2px solid #2563eb",
+                                        backgroundColor: "#2563eb",
+                                        color: "#fff",
+                                        border: "none",
                                         cursor: "pointer",
+                                        fontSize: "13px",
                                         fontWeight: "500",
-                                        transition: "all 0.3s ease",
+                                        whiteSpace: "nowrap",
                                       }}
-                                      onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor =
-                                          "#2563eb";
-                                        e.currentTarget.style.color = "#fff";
-                                      }}
-                                      onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor =
-                                          "transparent";
-                                        e.currentTarget.style.color = "#2563eb";
-                                      }}
-                                      onClick={() =>
-                                        navigate(`/freelancer-single/${f.id}`)
-                                      }
+                                      onClick={() => navigate(`/freelancer-single/${f.id}`)}
                                     >
-                                      <span
-                                        style={{
-                                          fontSize: "20px",
-                                          marginBottom: "4px",
-                                        }}
-                                      >
-                                        👤
-                                      </span>
-                                      <span>View Profile</span>
+                                      View
                                     </button>
                                   </div>
                                 ))}
-                              </div>
+                            </div>
 
-                              {/* View all freelancers button at bottom */}
-                              <div className="text-center mt20">
-                                <button
-                                  className="px-4 py-2 rounded-3"
-                                  style={{
-                                    backgroundColor: "#2563eb",
-                                    color: "#fff",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    fontWeight: "500",
-                                  }}
-                                  onClick={() => navigate("/freelancer-1")}
-                                >
-                                  View All Freelancers
-                                </button>
-                              </div>
+                            {/* View all button */}
+                            <div className="text-center mt15">
+                              <button
+                                className="px-3 py-2 rounded-3"
+                                style={{
+                                  backgroundColor: "#2563eb",
+                                  color: "#fff",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  fontWeight: "500",
+                                  fontSize: "14px",
+                                }}
+                                onClick={() => navigate("/freelancer-1")}
+                              >
+                                View All Freelancers
+                              </button>
                             </div>
                           </div>
                         </div>
-                      )}
-                    </Sticky>
-                  ) : (
-                    <div className="scrollbalance-inner">
-                      <div className="blog-sidebar ms-lg-auto">
-                        <div
-                          className="px30 bdr1 pt30 pb30 mb30 bg-white bdrs12 default-box-shadow1 d-flex flex-column"
-                          style={{ maxHeight: "600px" }}
-                        >
-                          <h4>PCB Freelancers</h4>
-                          <div className="mt20 flex-grow-1 overflow-auto">
-                            {sidebarList.map((f, idx) => (
-                              <div
-                                key={idx}
-                                className="d-flex align-items-center pb20 mb20 bdrb1"
-                              >
-                                <img
-                                  className="rounded-circle mr15"
-                                  src={f.avatar}
-                                  alt={f.name}
-                                  width="48"
-                                  height="48"
-                                />
-                                <div className="flex-grow-1">
-                                  <div className="d-flex justify-content-between align-items-center">
-                                    <h6 className="mb0">{f.name}</h6>
-                                    <span className="fz14 fw500">
-                                      ${f.rate}/hr
-                                    </span>
-                                  </div>
-                                  <p className="text mb5">{f.location}</p>
-                                  <p className="text mb0 fz14">
-                                    <i className="fas fa-star review-color me-1"></i>{" "}
-                                    {f.rating} ({f.reviews} reviews) •{" "}
-                                    {f.success}% Job Success
-                                  </p>
-                                </div>
-                                <button
-                                  className="ml15"
-                                  style={{
-                                    backgroundColor: "#2563eb",
-                                    color: "#fff",
-                                    padding: "8px 16px",
-                                    borderRadius: "8px",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    transition: "background-color 0.2s ease",
-                                  }}
-                                  onMouseEnter={(e) =>
-                                  (e.currentTarget.style.backgroundColor =
-                                    "#1d4ed8")
-                                  }
-                                  onMouseLeave={(e) =>
-                                  (e.currentTarget.style.backgroundColor =
-                                    "#2563eb")
-                                  }
-                                >
-                                  Message Freelancer
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                          {/* View all freelancers button */}
-                          <div className="text-center mt20">
-                            <button
-                              className="px-4 py-2 rounded-3"
-                              style={{
-                                backgroundColor: "#2563eb",
-                                color: "#fff",
-                                border: "none",
-                                cursor: "pointer",
-                                fontWeight: "500",
-                              }}
-                              onClick={() => navigate("/freelancers")}
-                            >
-                              View All Freelancers
-                            </button>
-                          </div>
-                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </Sticky>
+
+
                 </div>
               </div>
             </div>
