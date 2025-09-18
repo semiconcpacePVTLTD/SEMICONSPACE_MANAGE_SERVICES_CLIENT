@@ -47,9 +47,9 @@ export default function HomePage18() {
       <MetaComponent meta={metadata} />
 <Header19 service={selectedService} services={services} />
       <div className="body_content">
-        <Hero18 service={selectedService} services={services} />
+        <Hero18  services={services} />
         <BrowserCategory3  />
-        <TrendingService3 />
+        <TrendingService3 services={services} />
         <NeedSomething18 />
         <CounterInfo1 />
         <HighestRated18 />

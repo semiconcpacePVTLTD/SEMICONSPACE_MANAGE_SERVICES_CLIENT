@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import Breadcumb3 from "@/components/breadcumb/Breadcumb3";
@@ -20,8 +20,12 @@ export default function ServicePage1() {
   // Use navigation state if present, otherwise fetch
   const [serviceData, setServiceData] = useState(services ?? null);
 
+  const didFetchRef = useRef(false);
+
   useEffect(() => {
     if (services) return; // already provided via navigation
+    if (didFetchRef.current) return; // prevent double-fetch in StrictMode
+    didFetchRef.current = true;
 
     let ignore = false;
     const controller = new AbortController();
