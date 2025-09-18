@@ -25,10 +25,10 @@ const menus = [
   //     { id: 20, name: "Home V20", path: "/home-20" },
   //   ],
   // },
-{
+  {
     id: 2,
     name: "Services",
-    path: "/service-1",
+    path: "/service-2",
     children: [], // 👈 keep empty, will be filled from API
   },
 

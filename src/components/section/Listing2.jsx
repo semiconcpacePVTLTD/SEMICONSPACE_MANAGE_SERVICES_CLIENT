@@ -7,7 +7,7 @@ import priceStore from "@/store/priceStore";
 import PopularServiceCard2 from "../card/PopularServiceCard2";
 import PopularServiceSlideCard2 from "../card/PopularServiceSlideCard2";
 
-export default function Listing2() {
+export default function Listing2({ services, CardComponent }) {
   const getDeliveryTime = listingStore((state) => state.getDeliveryTime);
   const getPriceRange = priceStore((state) => state.priceRange);
   const getLevel = listingStore((state) => state.getLevel);
@@ -17,40 +17,64 @@ export default function Listing2() {
   const getSpeak = listingStore((state) => state.getSpeak);
   const getSearch = listingStore((state) => state.getSearch);
 
+  // If dynamic services are provided (either array or {success,data}), normalize them to card shape
+  const rawServices = Array.isArray(services)
+    ? services
+    : services?.success && Array.isArray(services?.data)
+      ? services.data
+      : [];
+
+  const normalized = rawServices.map((svc) => {
+    const img = Array.isArray(svc?.imgURLs) && svc.imgURLs.length ? svc.imgURLs[0] : ""; // no fallback, allow blank
+    const priceRaw = svc?.milestoneRules?.advance ?? 0;
+    const price = typeof priceRaw === "string" ? parseFloat(priceRaw.replace("%", "")) : Number(priceRaw) || 0;
+
+    return {
+      id: svc.id,
+      // PopularServiceCard2 expects img2 for the thumbnail
+      img2: img || undefined,
+      category: svc.shortDescription || svc.description || "Design & Creative",
+      title: svc.name,
+      rating: 4.82,
+      review: 94,
+      author: { img: "/images/team/fl-s-1.png", name: svc.createdBy || "Unknown" },
+      price,
+      // fields for filters
+      deliveryTime: svc.deliveryTime || "",
+      level: svc.level || "",
+      location: (svc.location || "").toString().toLowerCase(),
+      language: svc.language || "",
+      tool: svc.tool || "",
+      sort: svc.sort || "best-seller",
+    };
+  });
+
+  // Choose data source: use provided data only; if empty, allow empty state UI
+  const dataSource = normalized;
+
   // delivery filter
   const deliveryFilter = (item) =>
-    getDeliveryTime === "" || getDeliveryTime === "anytime"
-      ? item
-      : item.deliveryTime === getDeliveryTime;
+    getDeliveryTime === "" || getDeliveryTime === "anytime" ? item : item.deliveryTime === getDeliveryTime;
 
   // price filter
-  const priceFilter = (item) =>
-    getPriceRange.min <= item.price && getPriceRange.max >= item.price;
+  const priceFilter = (item) => getPriceRange.min <= item.price && getPriceRange.max >= item.price;
 
   // level filter
-  const levelFilter = (item) =>
-    getLevel?.length !== 0 ? getLevel.includes(item.level) : item;
+  const levelFilter = (item) => (getLevel?.length !== 0 ? getLevel.includes(item.level) : item);
 
   // location filter
-  const locationFilter = (item) =>
-    getLocation?.length !== 0 ? getLocation.includes(item.location) : item;
+  const locationFilter = (item) => (getLocation?.length !== 0 ? getLocation.includes(item.location) : item);
 
-  const searchFilter = (item) =>
-    getSearch !== ""
-      ? item.location.split("-").join(" ").includes(getSearch.toLowerCase())
-      : item;
+  const searchFilter = (item) => (getSearch !== "" ? item.location.split("-").join(" ").includes(getSearch.toLowerCase()) : item);
 
   // sort by filter
-  const sortByFilter = (item) =>
-    getBestSeller === "best-seller" ? item : item.sort === getBestSeller;
+  const sortByFilter = (item) => (getBestSeller === "best-seller" ? item : item.sort === getBestSeller);
 
   // design tool filter
-  const designToolFilter = (item) =>
-    getDesginTool?.length !== 0 ? getDesginTool.includes(item.tool) : item;
+  const designToolFilter = (item) => (getDesginTool?.length !== 0 ? getDesginTool.includes(item.tool) : item);
 
   // speak filter
-  const speakFilter = (item) =>
-    getSpeak?.length !== 0 ? getSpeak.includes(item.language) : item;
+  const speakFilter = (item) => (getSpeak?.length !== 0 ? getSpeak.includes(item.language) : item);
 
   return (
     <>
@@ -58,25 +82,39 @@ export default function Listing2() {
         <div className="container">
           <ListingOption1 />
           <div className="row">
-            {product1
-              .slice(0, 12)
-              .filter(deliveryFilter)
-              .filter(priceFilter)
-              .filter(levelFilter)
-              .filter(locationFilter)
-              .filter(searchFilter)
-              .filter(sortByFilter)
-              .filter(designToolFilter)
-              .filter(speakFilter)
-              .map((item, i) => (
-                <div key={i} className="col-sm-6">
-                  {item?.gallery?.length > 0 ? (
-                    <PopularServiceSlideCard2 data={item} />
-                  ) : (
-                    <PopularServiceCard2 data={item} />
-                  )}
+            {(() => {
+              const filtered = dataSource
+                .slice(0, 12)
+                .filter(deliveryFilter)
+                .filter(priceFilter)
+                .filter(levelFilter)
+                .filter(locationFilter)
+                .filter(searchFilter)
+                .filter(sortByFilter)
+                .filter(designToolFilter)
+                .filter(speakFilter);
+
+              return filtered.length === 0 ? (
+                <div className="col-12">
+                  <div className="text-center py-5">
+                    <h5 className="mb-2">No services found</h5>
+                    <p className="text-muted mb-0">Try adjusting filters or check back later.</p>
+                  </div>
                 </div>
-              ))}
+              ) : (
+                filtered.map((item, i) => (
+                  <div key={i} className="col-12 col-md-6">
+                    {CardComponent ? (
+                      <CardComponent data={item} />
+                    ) : item?.gallery ? (
+                      <PopularServiceSlideCard2 data={item} />
+                    ) : (
+                      <PopularServiceCard2 data={item} />
+                    )}
+                  </div>
+                ))
+              );
+            })()}
           </div>
           <Pagination1 />
         </div>

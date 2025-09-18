@@ -11,15 +11,14 @@ export default function Breadcumb4() {
     <>
       <section className="breadcumb-section pt-0">
         <div
-          className={`cta-banner mx-auto maxw1700 pt120 pb120 bdrs16 position-relative overflow-hidden d-flex align-items-center px30-lg ${
-            pathname === "/service-1"
-              ? "cta-service-v1 mx20-lg"
-              : pathname === "/service-2"
+          className={`cta-banner mx-auto maxw1700 pt120 pb120 bdrs16 position-relative overflow-hidden d-flex align-items-center px30-lg ${pathname === "/service-1"
+            ? "cta-service-v1 mx20-lg"
+            : pathname === "/service-2"
               ? "cta-service-v2"
               : pathname === "/service-5"
-              ? "cta-service-v1 mb55 mx0"
-              : ""
-          }`}
+                ? "cta-service-v1 mb55 mx0"
+                : ""
+            }`}
         >
           <img
             className="left-top-img wow zoomIn"
@@ -40,19 +39,17 @@ export default function Breadcumb4() {
           <div className="container">
             <div className="row wow fadeInUp">
               <div
-                className={`${
-                  pathname === "/service-5" ? "col-xl-8" : "col-xl-5 "
-                } `}
+                className={`${pathname === "/service-5" ? "col-xl-8" : "col-xl-5 "
+                  } `}
               >
                 <div
-                  className={`position-relative ${
-                    pathname === "/service-5" ? "pl80 pl0-sm" : ""
-                  }`}
+                  className={`position-relative ${pathname === "/service-5" ? "pl80 pl0-sm" : ""
+                    }`}
                 >
-                  <h2>Design &amp; Creative</h2>
+                  <h2>Our Services</h2>
                   <p className="text mb30">
-                    Give your visitor a smooth online experience with a solid UX
-                    design
+                    Work with talented people at the most affordable price to get the most
+                    out of your time and cost
                   </p>
                   <div className="d-flex align-items-center">
                     <a

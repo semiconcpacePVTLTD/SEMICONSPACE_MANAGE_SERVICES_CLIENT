@@ -6,14 +6,14 @@ import "swiper/css/navigation";
 import "swiper/css/thumbs";
 import { FreeMode, Navigation, Thumbs } from "swiper";
 
-const gigImages = [
-  "/images/listings/service-details-1.jpg",
-  "/images/listings/service-details-1.jpg",
-  "/images/listings/service-details-1.jpg",
-];
+const PLACEHOLDER = "/images/header-logo.svg";
 
-export default function ServiceDetailSlider1() {
+export default function ServiceDetailSlider1({ images }) {
   const [thumbsSwiper, setThumbsSwiper] = useState(null);
+  // Keep only valid non-empty image URLs
+  const slides = (Array.isArray(images) ? images : [])
+    .filter((u) => typeof u === "string" && u.trim().length > 0);
+  const noImages = slides.length === 0;
 
   return (
     <>
@@ -48,57 +48,69 @@ export default function ServiceDetailSlider1() {
               </div>
               <div className="details">
                 <h5 className="title">Location</h5>
-                <p className="mb-0 text">New York</p>
+                <p className="mb-0 text">India</p>
               </div>
             </div>
           </div>
         </div>
         <div className="service-single-sldier vam_nav_style slider-1-grid owl-carousel owl-theme mb60 owl-loaded owl-drag">
           <div className="thumb p50 p30-sm">
-            <Swiper
-              loop={true}
-              spaceBetween={10}
-              navigation={{
-                prevEl: ".prev-btn",
-                nextEl: ".next-btn",
-              }}
-              thumbs={{
-                swiper:
-                  thumbsSwiper && !thumbsSwiper.destroyed ? thumbsSwiper : null,
-              }}
-              modules={[FreeMode, Navigation, Thumbs]}
-              className="mySwiper2"
-            >
-              {gigImages.map((item, i) => (
-                <SwiperSlide key={i}>
-                  <img src={item} alt="gallery" className="w-100 h-auto" />
-                </SwiperSlide>
-              ))}
-            </Swiper>
+            {noImages ? (
+              <div className="d-flex align-items-center justify-content-center" style={{ height: 360 }}>
+                <img src={PLACEHOLDER} alt="placeholder" style={{ maxHeight: 200, width: "auto" }} />
+              </div>
+            ) : (
+              <Swiper
+                loop={true}
+                spaceBetween={10}
+                navigation={{
+                  prevEl: ".prev-btn",
+                  nextEl: ".next-btn",
+                }}
+                thumbs={{
+                  swiper:
+                    thumbsSwiper && !thumbsSwiper.destroyed ? thumbsSwiper : null,
+                }}
+                modules={[FreeMode, Navigation, Thumbs]}
+                className="mySwiper2"
+              >
+                {slides.map((item, i) => (
+                  <SwiperSlide key={i}>
+                    <img src={item} alt="gallery" className="w-100 h-auto" />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            )}
           </div>
-          <button type="button" className="prev-btn">
-            <i className="far fa-arrow-left-long" />
-          </button>
-          <button type="button" className="next-btn">
-            <i className="far fa-arrow-right-long" />
-          </button>
+          <div style={{ minHeight: 94 }}>
+            {!noImages && (
+              <>
+                <button type="button" className="prev-btn">
+                  <i className="far fa-arrow-left-long" />
+                </button>
+                <button type="button" className="next-btn">
+                  <i className="far fa-arrow-right-long" />
+                </button>
 
-          <Swiper
-            onSwiper={setThumbsSwiper}
-            loop={true}
-            spaceBetween={10}
-            slidesPerView={4}
-            freeMode={true}
-            watchSlidesProgress={true}
-            modules={[FreeMode, Navigation, Thumbs]}
-            className="mySwiper ui-service-gig-slder-bottom"
-          >
-            {gigImages.map((item, i) => (
-              <SwiperSlide key={i}>
-                <img src={item} alt="image" className="w-100" />
-              </SwiperSlide>
-            ))}
-          </Swiper>
+                <Swiper
+                  onSwiper={setThumbsSwiper}
+                  loop={true}
+                  spaceBetween={10}
+                  slidesPerView={4}
+                  freeMode={true}
+                  watchSlidesProgress={true}
+                  modules={[FreeMode, Navigation, Thumbs]}
+                  className="mySwiper ui-service-gig-slder-bottom"
+                >
+                  {slides.map((item, i) => (
+                    <SwiperSlide key={i}>
+                      <img src={item} alt="image" className="w-100" />
+                    </SwiperSlide>
+                  ))}
+                </Swiper>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </>

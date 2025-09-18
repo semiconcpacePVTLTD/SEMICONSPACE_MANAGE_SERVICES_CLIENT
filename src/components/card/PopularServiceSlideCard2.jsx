@@ -17,7 +17,7 @@ export default function PopularServiceSlideCard2({ data }) {
       <div className="listing-style1 list-style d-block d-xl-flex align-items-center">
         <div className="list-thumb flex-shrink-0">
           <div className="listing-thumbIn-slider position-relative navi_pagi_bottom_center slider-1-grid">
-            {showSwiper && (
+            {showSwiper && data?.gallery?.length > 0 ? (
               <Swiper
                 navigation={{
                   prevEl: ".btn__prev__018",
@@ -31,7 +31,7 @@ export default function PopularServiceSlideCard2({ data }) {
                   clickable: true,
                 }}
               >
-                {data?.gallery?.map((item, index) => (
+                {data.gallery.map((item, index) => (
                   <SwiperSlide key={index}>
                     <img
                       className="w-100 h-100 object-fit-cover"
@@ -58,6 +58,8 @@ export default function PopularServiceSlideCard2({ data }) {
                   </div>
                 </div>
               </Swiper>
+            ) : (
+              <div className="w-100 h-100 object-fit-cover bg-light" style={{ minHeight: 180 }} />
             )}
           </div>
         </div>

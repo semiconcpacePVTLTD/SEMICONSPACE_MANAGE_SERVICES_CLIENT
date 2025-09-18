@@ -30,7 +30,8 @@ export default function FreelancerPageSingle11() {
           signal: controller.signal,
         });
         const json = await res.json();
-        setData(json);
+        // Accept either {profile, profile_details} or {data: {profile, profile_details}}
+        setData(json?.data ?? json);
       } catch (e) {
         if (e.name !== "AbortError") {
           console.error("Failed to load profile details", e);
