@@ -1,4 +1,12 @@
 export const browserCategory = [
+    {
+    id: 0,
+    icon: "flaticon-web-design-1",
+    skill: 1.853,
+    title: "PCB & designs",
+    brif: "PCB layout, schematic design, prototyping, and electronic circuit solutions",
+    img: "/images/listings/category-1.jpg",
+  },
   {
     id: 1,
     icon: "flaticon-developer",

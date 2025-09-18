@@ -47,7 +47,7 @@ export default function ServicePage2() {
   return (
     <>
       <MetaComponent meta={metadata} />
-      <Breadcumb3 path={["Home", "Services", "Our Services"]} />
+      <Breadcumb3 path={["Home", "Services"]} />
       <Breadcumb4 />
       <Listing2 services={serviceData ?? services ?? []} />
     </>

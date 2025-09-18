@@ -86,7 +86,7 @@ export default function Listing13({ freelancers = [] }) {
     <>
       <section className="pt30 pb90">
         <div className="container">
-          <ListingOption6 />
+<ListingOption6 freelancers={normalized} />
           <div className="row">
             {filtered.map((item, i) => (
               <div key={i} className="col-md-6 col-lg-4 col-xl-3">
@@ -95,7 +95,7 @@ export default function Listing13({ freelancers = [] }) {
             ))}
           </div>
           <div className="row mt30">
-            <Pagination1 />
+<Pagination1 totalItems={filtered.length} itemsPerPage={12} />
           </div>
         </div>
       </section>

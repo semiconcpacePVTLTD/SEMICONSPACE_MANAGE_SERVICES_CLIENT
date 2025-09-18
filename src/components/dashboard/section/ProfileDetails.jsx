@@ -10,7 +10,11 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
   console.log("[ProfileDetails] profile prop:", profile, "isCustomer:", isCustomer ,"details:", details);
   // Local editable copy of details (sourced only from props)
   const [profile_details, setProfileDetails] = useState(details || {});
-  useEffect(() => { setProfileDetails(details || {}); }, [details]);
+  const detailsInitialRef = useRef(null);
+  useEffect(() => {
+    setProfileDetails(details || {});
+    if (details && !detailsInitialRef.current) detailsInitialRef.current = details;
+  }, [details]);
   // Non-customer select states
   const [getHourly, setHourly] = useState({ option: "Select", value: null });
   const [getGender, setGender] = useState({ option: "Select", value: null });
@@ -33,6 +37,63 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
     setSelectedImage(URL.createObjectURL(file));
   };
 
+  // MCA document handling
+  const [mcsDocFile, setMcsDocFile] = useState(null);
+  const [mcsDocPreview, setMcsDocPreview] = useState(null);
+  const handleMcsDocChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMcsDocFile(file);
+    setMcsDocPreview(URL.createObjectURL(file));
+  };
+
+  // Separate API call to upload and persist profile image only
+  const handleProfileImageUpload = async () => {
+    try {
+      if (!selectedImageFile) {
+        return Swal.fire({ icon: "info", title: "No image selected", text: "Choose an image first." });
+      }
+      setPageLoading(true);
+      const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
+      const uploadUrl = `${BASE_URL}/profile-service/upload-image`;
+      const formData = new FormData();
+      formData.append("profile_image", selectedImageFile);
+      const uploadRes = await axios.post(uploadUrl, formData);
+      const data = uploadRes?.data;
+      const uploadedUrl = data?.url || data?.data?.url || data?.profile_image || data?.data?.profile_image || data?.location || data?.data?.location || null;
+      if (!uploadedUrl) throw new Error("Upload did not return an image URL.");
+
+      // Persist only the image change
+      const payload = { profile: { user_id: form.user_id, profile_image: uploadedUrl } };
+      const config = { headers: { "Content-Type": "application/json" } };
+      const updateUrl = `${BASE_URL}/profile-service/updateuser`;
+      const res = await axios.put(updateUrl, payload, config);
+      const ok = res?.data?.success ?? true;
+      if (ok) {
+        setForm((s) => ({ ...s, profile_image: uploadedUrl }));
+        initialRef.current = { ...(initialRef.current || {}), profile_image: uploadedUrl };
+        setSelectedImage(uploadedUrl);
+        setSelectedImageFile(null);
+        Swal.fire({ icon: "success", title: "Profile image updated" });
+      } else {
+        Swal.fire({ icon: "error", title: "Update failed", text: res?.data?.message || "Please try again." });
+      }
+    } catch (err) {
+      console.error("[ProfileDetails] profile image upload error", err);
+      const status = err?.response?.status;
+      const isNetwork = err?.message?.includes("Network Error") || err?.code === "ECONNABORTED" || (err?.request && !err?.response);
+      if (status === 500) {
+        Swal.fire({ icon: "error", title: "Internal server error", text: "Please try again later." });
+      } else if (isNetwork) {
+        Swal.fire({ icon: "error", title: "Couldn't reach server", text: "Please check your connection or try again later." });
+      } else {
+        Swal.fire({ icon: "error", title: "Image upload failed", text: err?.response?.data?.message || err.message || "Please try again." });
+      }
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
   // handlers for non-customer
   const hourlyHandler = (option, value) => setHourly({ option, value });
   const genderHandler = (option, value) => setGender({ option, value });
@@ -50,6 +111,7 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
     phone: "",
     bio: "",
     location: "",
+    company_name: "",
     password: "",
     status: false,
     authenticator: false,
@@ -59,6 +121,7 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
     role_id: [],
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [pageLoading, setPageLoading] = useState(false);
   const initialRef = useRef(null);
 
   // Seed state from fetched profile
@@ -70,6 +133,7 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
       phone: profile?.phone || "",
       bio: profile?.bio || "",
       location: profile?.location || "",
+      company_name: profile?.company_name || "",
       password: profile?.password || "",
       status: !!profile?.status,
       authenticator: !!profile?.authenticator,
@@ -86,71 +150,240 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
     setSelectedImageFile(null);
   }, [profile]);
 
-  // Track changes compared to initial
+  // Track changes compared to initial (both top-level form and fetched profile_details)
   const hasChanges = useMemo(() => {
-    const initial = initialRef.current;
-    if (!initial) return false;
-    const currentImage = selectedImage || ""; // preview URL or empty
-    const initialImage = initial.profile_image || "";
-    return (
-      form.name !== initial.name ||
-      form.email !== initial.email ||
-      form.phone !== initial.phone ||
-      form.bio !== initial.bio ||
-      form.location !== initial.location ||
-      form.password !== initial.password ||
-      currentImage !== initialImage
+    const initialForm = initialRef.current;
+    const initialDetails = detailsInitialRef.current;
+    if (!initialForm) return false;
+
+    // Form-level diffs (exclude image because it has its own upload flow)
+    const formChanged = (
+      form.name !== initialForm.name ||
+      form.email !== initialForm.email ||
+      form.phone !== initialForm.phone ||
+      form.bio !== initialForm.bio ||
+      form.location !== initialForm.location ||
+      form.company_name !== initialForm.company_name ||
+      form.password !== initialForm.password
     );
-  }, [form.name, form.email, form.phone, form.bio, form.location, form.password, selectedImage]);
+
+    // Details-level shallow diff excluding enterprise verification keys
+    const stripVerification = (obj) => {
+      const {
+        pan_number, pan_verified, mcs_incorporation_no, mcs_incorporation_image,
+        mcs_verified, gstin_number, gstin_verified, verified, remarks,
+        ...rest
+      } = obj || {};
+      return rest;
+    };
+    const detailsChanged = initialDetails
+      ? JSON.stringify(stripVerification(profile_details)) !== JSON.stringify(stripVerification(initialDetails))
+      : false;
+
+    return formChanged || detailsChanged;
+  }, [form.name, form.email, form.phone, form.bio, form.location, form.company_name, form.password, profile_details]);
+
+  // Track changes for enterprise verification section only
+  const hasVerificationChanges = useMemo(() => {
+    const initialDetails = detailsInitialRef.current || {};
+    const curr = profile_details || {};
+    const keys = [
+      "pan_number","pan_verified","mcs_incorporation_no","mcs_incorporation_image",
+      "mcs_verified","gstin_number","gstin_verified","verified","remarks"
+    ];
+    const changed = keys.some((k) => JSON.stringify(curr?.[k] ?? null) !== JSON.stringify(initialDetails?.[k] ?? null));
+    return changed || !!mcsDocFile;
+  }, [profile_details, mcsDocFile]);
+
+  // Helper flags based on verification state
+  const isPanReadOnly = !!profile_details?.pan_verified;
+  const isMcaReadOnly = !!profile_details?.mcs_verified;
+  const isGstinReadOnly = !!profile_details?.gstin_verified;
+
+  const handleCompanyVerificationSubmit = async () => {
+    try {
+      setPageLoading(true);
+      const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
+      let uploadedMcsDocUrl = null;
+      if (mcsDocFile) {
+        const uploadUrl = `${BASE_URL}/profile-service/upload-image`;
+        const formData = new FormData();
+        formData.append("file", mcsDocFile);
+        const uploadRes = await axios.post(uploadUrl, formData);
+        const data = uploadRes?.data;
+        uploadedMcsDocUrl = data?.url || data?.data?.url || data?.location || data?.data?.location || data?.profile_image || data?.data?.profile_image || null;
+        if (!uploadedMcsDocUrl) throw new Error("MCA document upload did not return a URL.");
+      }
+      const verificationDetails = {
+        pan_number: profile_details?.pan_number || "",
+        pan_verified: !!profile_details?.pan_verified,
+        mcs_incorporation_no: profile_details?.mcs_incorporation_no || "",
+        mcs_incorporation_image: (uploadedMcsDocUrl ?? profile_details?.mcs_incorporation_image) || "",
+        mcs_verified: !!profile_details?.mcs_verified,
+        gstin_number: profile_details?.gstin_number || "",
+        gstin_verified: !!profile_details?.gstin_verified,
+        verified: !!profile_details?.verified,
+        remarks: profile_details?.remarks || "",
+      };
+      const payload = { profile: { user_id: form.user_id }, profile_details: verificationDetails };
+      const config = { headers: { "Content-Type": "application/json" } };
+      const url = `${BASE_URL}/verification/request`;
+      const res = await axios.put(url, payload, config);
+      const ok = res?.data?.success ?? true;
+      if (ok) {
+        Swal.fire({ icon: "success", title: "Company verification updated", text: res?.data?.message || "Details saved." });
+        // refresh initial details snapshot for verification keys
+        detailsInitialRef.current = {
+          ...(detailsInitialRef.current || {}),
+          ...verificationDetails,
+        };
+        setMcsDocFile(null);
+      } else {
+        Swal.fire({ icon: "error", title: "Update failed", text: res?.data?.message || "Please try again." });
+      }
+    } catch (err) {
+      console.error("[ProfileDetails] company verification update error", err);
+      const status = err?.response?.status;
+      const isNetwork = err?.message?.includes("Network Error") || err?.code === "ECONNABORTED" || (err?.request && !err?.response);
+      if (status === 500) {
+        Swal.fire({ icon: "error", title: "Internal server error", text: "Please try again later." });
+      } else if (isNetwork) {
+        Swal.fire({ icon: "error", title: "Couldn't reach server", text: "Please check your connection or try again later." });
+      } else {
+        Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || err.message || "Something went wrong." });
+      }
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
 
+    // Determine role IDs (array of numbers)
+    const roleIds = Array.isArray(form.role_id)
+      ? form.role_id.map((x) => Number(x))
+      : (form.role_id != null ? [Number(form.role_id)] : []);
+    // Note: Non-freelancers can save profile only; freelancers (role_id 2) also send profile_details.
+
     try {
+      setPageLoading(true);
       const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
 
-      // Build payload exactly like backend expects (profile object)
-      const payload = {
-        profile: {
-          name: form.name,
-          company_name: null, // not in form yet
-          location: form.location || null,
-          email: form.email,
-          phone: form.phone,
-          role: form.role,
-          role_id: form.role_id,
-          bio: form.bio || null,
-          profile_image: form.profile_image || null,
-          user_id: form.user_id,
-          created_at: profile?.created_at ?? null,
-          modified_at: null,
-          created_by: profile?.created_by ?? form.email,
-          modified_by: null,
-          status: !!form.status,
-          authenticator: !!form.authenticator,
-          ...(form.password ? { password: form.password } : {}),
-        },
-      };
+      // Build cleaned details so deletions (e.g., languages) persist
+      const cleanedDetails = (() => {
+        const d = profile_details ?? {};
 
-      // Build request. If an image file is selected, send multipart/form-data
-      let config = {};
-      let body = payload;
+        // Exclude enterprise verification keys from the general save payload
+        const {
+          pan_number, pan_verified, mcs_incorporation_no, mcs_incorporation_image,
+          mcs_verified, gstin_number, gstin_verified, verified, remarks,
+          ...rest
+        } = d;
 
-      if (selectedImageFile) {
-        const fd = new FormData();
-        fd.append("profile", new Blob([JSON.stringify(payload.profile)], { type: "application/json" }));
-        fd.append("profile_image", selectedImageFile);
-        body = fd;
-        config.headers = { "Content-Type": "multipart/form-data" };
+        const filterArr = (arr) =>
+          Array.isArray(arr)
+            ? arr
+                .map((s) => (typeof s === "string" ? s.trim() : s))
+                .filter((v) => (typeof v === "string" ? v.length > 0 : Boolean(v)))
+            : [];
+
+        // Normalize hourly_rate to a 2-decimal string or null
+        const toPriceString = (v) => {
+          if (v == null || v === "") return "";
+          const num = typeof v === "number" ? v : Number(String(v).replace(/[^0-9.+-]/g, ""));
+          if (Number.isFinite(num)) return num.toFixed(2);
+          return String(v).trim();
+        };
+        const hourly_rate =
+          rest.hourly_rate == null || rest.hourly_rate === ""
+            ? null
+            : toPriceString(rest.hourly_rate);
+
+        // Convert fixed_price_projects array [{domain, price}] -> object map { [domain]: "price" }
+        const projectsMap = Array.isArray(rest.fixed_price_projects)
+          ? rest.fixed_price_projects.reduce((acc, p) => {
+              const domain = typeof p?.domain === "string" ? p.domain.trim() : "";
+              const priceStr = toPriceString(p?.price);
+              if (domain && priceStr) acc[domain] = priceStr;
+              return acc;
+            }, {})
+          : (rest.fixed_price_projects && typeof rest.fixed_price_projects === "object"
+              ? rest.fixed_price_projects
+              : {});
+
+        return {
+          ...rest,
+          languages: filterArr(rest.languages),
+          skills: filterArr(rest.skills),
+          services_list: filterArr(rest.services_list),
+          hourly_rate,
+          fixed_price_projects: projectsMap,
+        };
+      })();
+
+      // If a new image file is selected, upload it first to obtain a URL
+      let uploadedImageUrl = null;
+      try {
+        if (selectedImageFile) {
+          const uploadUrl = `${BASE_URL}/profile-service/upload-image`;
+          const formData = new FormData();
+          // Field name may vary server-side; using 'profile_image' to match current backend expectation
+          formData.append("profile_image", selectedImageFile);
+          const uploadRes = await axios.post(uploadUrl, formData /* let browser set boundary */);
+          const data = uploadRes?.data;
+          // Try common response shapes for URLs
+          uploadedImageUrl = data?.url || data?.data?.url || data?.profile_image || data?.data?.profile_image || data?.location || data?.data?.location || null;
+          if (!uploadedImageUrl) {
+            throw new Error("Upload did not return an image URL.");
+          }
+        }
+      } catch (uploadErr) {
+        console.error("[ProfileDetails] image upload error", uploadErr);
+        return Swal.fire({ icon: "error", title: "Image upload failed", text: uploadErr?.response?.data?.message || uploadErr.message || "Please try again." });
       }
 
+      // Verification document upload is handled in handleCompanyVerificationSubmit only.
+
+      // Build profile object
+      const profileObj = {
+        name: form.name,
+        company_name: form.company_name || null,
+        location: form.location || null,
+        email: form.email,
+        phone: form.phone,
+        role: form.role,
+        role_id: form.role_id,
+        bio: form.bio || null,
+        // Prefer freshly uploaded URL; otherwise keep existing string; never send preview blob URLs
+        profile_image: uploadedImageUrl ?? ((typeof form.profile_image === "string" && form.profile_image.trim().length > 0) ? form.profile_image : null),
+        user_id: form.user_id,
+        created_at: profile?.created_at ?? null,
+        modified_at: null,
+        created_by: profile?.created_by ?? form.email,
+        modified_by: null,
+        status: !!form.status,
+        authenticator: !!form.authenticator,
+        ...(form.password ? { password: form.password } : {}),
+      };
+
+      // Include profile_details for freelancers (role_id 2) and enterprises (role_id 3)
+      const payload = (roleIds.includes(2) || roleIds.includes(3))
+        ? { profile: profileObj, profile_details: cleanedDetails }
+        : { profile: profileObj };
+
+      // Build request: send pure JSON so arrays stay as arrays and backend gets correct shapes
+      const config = { headers: { "Content-Type": "application/json" } };
+
       const url = `${BASE_URL}/profile-service/updateuser`;
-      const res = await axios.put(url, body, config);
+      const res = await axios.put(url, payload, config);
       const ok = res?.data?.success ?? true; // assume success=true if backend uses that flag; default true if not provided
       if (ok) {
-        Swal.fire({ icon: "success", title: "Profile updated", text: res?.data?.message || "Your changes were saved." })
-          .then(() => window.location.reload());
-        // reset initial snapshot to disable button again (will be moot after reload)
+        Swal.fire({ icon: "success", title: "Profile updated", text: res?.data?.message || "Your changes were saved." }).then(() => {
+          // Full page refresh after user acknowledges success
+          window.location.reload();
+        });
+        // reset initial snapshot (mostly moot since we reload)
         initialRef.current = {
           ...initialRef.current,
           name: form.name,
@@ -159,21 +392,46 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
           bio: form.bio,
           location: form.location,
           password: form.password,
-          profile_image: selectedImage || "",
+          profile_image: (uploadedImageUrl ?? (typeof form.profile_image === "string" ? form.profile_image : null)) ?? "",
         };
       } else {
-        Swal.fire({ icon: "error", title: "Update failed", text: res?.data?.message || "Please try again." })
-          .then(() => window.location.reload());
+        Swal.fire({ icon: "error", title: "Update failed", text: res?.data?.message || "Please try again." });
       }
     } catch (err) {
       console.error("[ProfileDetails] update error", err);
-      Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || err.message || "Something went wrong." })
-        .then(() => window.location.reload());
+      const status = err?.response?.status;
+      const isNetwork = err?.message?.includes("Network Error") || err?.code === "ECONNABORTED" || (err?.request && !err?.response);
+      if (status === 500) {
+        Swal.fire({ icon: "error", title: "Internal server error", text: "Please try again later." });
+      } else if (isNetwork) {
+        Swal.fire({ icon: "error", title: "Couldn't reach server", text: "Please check your connection or try again later." });
+      } else {
+        Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || err.message || "Something went wrong." });
+      }
+    } finally {
+      setPageLoading(false);
     }
   };
 
   return (
     <>
+      {/* Full-page loading overlay */}
+      {pageLoading && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(255,255,255,0.7)",
+          zIndex: 1050,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      )}
+
       <div className="ps-widget bgc-white bdrs4 p30 mb30 overflow-hidden position-relative">
         <div className="bdrb1 pb15 mb25">
           <h5 className="list-title">Profile Details</h5>
@@ -197,8 +455,17 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
                 </a>
                 <label>
                   <input type="file" accept=".png, .jpg, .jpeg" className="d-none" onChange={handleImageChange} />
-                  <a className="upload-btn ml10">Upload Image</a>
+                  <a className="upload-btn ml10">Choose Image</a>
                 </label>
+                <button
+                  type="button"
+                  className="ud-btn btn-thm ml10"
+                  onClick={handleProfileImageUpload}
+                  disabled={!selectedImageFile}
+                  style={{ cursor: selectedImageFile ? "pointer" : "not-allowed", opacity: selectedImageFile ? 1 : 0.6 }}
+                >
+                  Upload Image
+                </button>
               </div>
               <p className="text mb-0">
                 Max file size is 1MB, Minimum dimension: 330x300. Allowed: .jpg, .png
@@ -390,7 +657,7 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
       />
     </div>
   </div>
-  <div className="col-sm-6">
+  {/* <div className="col-sm-6">
     <div className="mb20">
       <label className="heading-color ff-heading fw500 mb10">Role</label>
       <input type="text" className="form-control" value={profile?.role?.join(", ") || ""} readOnly />
@@ -400,6 +667,20 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
     <div className="mb20">
       <label className="heading-color ff-heading fw500 mb10">Role ID</label>
       <input type="text" className="form-control" value={Array.isArray(form.role_id) ? form.role_id.join(", ") : (form.role_id ?? "")} readOnly />
+    </div>
+  </div> */}
+
+  {/* Company Name (for enterprise) */}
+  <div className="col-sm-6">
+    <div className="mb20">
+      <label className="heading-color ff-heading fw500 mb10">Company Name</label>
+      <input
+        type="text"
+        className="form-control"
+        placeholder="Company Name"
+        value={form.company_name}
+        onChange={(e) => setForm((s) => ({ ...s, company_name: e.target.value }))}
+      />
     </div>
   </div>
 
@@ -455,6 +736,7 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
   {/* Profile Details (from profile_details) */}
   {profile_details && (
     <>
+   
 
       {/* Hourly Rate (editable, decimal only) */}
       <div className="col-sm-6">
@@ -476,25 +758,35 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
         </div>
       </div>
 
-      {/* Skills with Add button to the right */}
-      <div className="col-md-12">
-        <div className="mb20">
-          <div className="d-flex justify-content-between align-items-center mb10">
-            <label className="heading-color ff-heading fw500 mb0">Skills</label>
-            <button
-              type="button"
-              className="ud-btn btn-thm"
-              onClick={() => {
-                const next = Array.isArray(profile_details?.skills) ? [...profile_details.skills] : [];
-                next.push("");
-                setProfileDetails((s) => ({ ...s, skills: next }));
-              }}
-            >
-              + Add Skill
-            </button>
-          </div>
-          {(profile_details?.skills ?? [""]).map((skill, idx) => (
-            <div key={idx} className="d-flex align-items-center mb10">
+{/* Skills table */}
+<div className="col-md-12">
+  <div className="mb20">
+    <div className="d-flex justify-content-between align-items-center mb10">
+      <label className="heading-color ff-heading fw500 mb0">Skills</label>
+      <button
+        type="button"
+        className="ud-btn btn-thm"
+        onClick={() => {
+          const next = Array.isArray(profile_details?.skills) ? [...profile_details.skills] : [];
+          next.push("");
+          setProfileDetails((s) => ({ ...s, skills: next }));
+        }}
+      >
+        + Add Skill
+      </button>
+    </div>
+
+    <table className="table table-bordered">
+      <thead>
+        <tr>
+          <th>Skill</th>
+          <th style={{ width: 80 }}>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {(profile_details?.skills ?? []).map((skill, idx) => (
+          <tr key={idx}>
+            <td>
               <input
                 type="text"
                 className="form-control"
@@ -506,117 +798,197 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
                   setProfileDetails((s) => ({ ...s, skills: next }));
                 }}
               />
-              <a
-                className="tag-delt text-thm2 ml10"
+            </td>
+            <td className="text-center">
+              <span
+                className="flaticon-delete text-thm2"
+                style={{ cursor: "pointer" }}
+                title="Remove skill"
                 onClick={() => {
                   const next = [...(profile_details?.skills ?? [])];
                   next.splice(idx, 1);
                   setProfileDetails((s) => ({ ...s, skills: next }));
                 }}
-                title="Remove skill"
-                role="button"
-              >
-                <span className="flaticon-delete text-thm2" />
-              </a>
-            </div>
-          ))}
-        </div>
-      </div>
+              />
+            </td>
+          </tr>
+        ))}
+        {(!profile_details?.skills || profile_details.skills.length === 0) && (
+          <tr>
+            <td colSpan={2} className="text-center text-muted">No skills added</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</div>
 
-      {/* Services (editable lists per category, add-only) */}
-      <div className="col-md-12">
-        <div className="mb20">
-          <label className="heading-color ff-heading fw500 mb10">Services</label>
-          {Object.keys(profile_details?.services || {}).map((cat) => (
-            <div key={cat} className="mb10">
+{/* Services table */}
+<div className="col-md-12">
+  <div className="mb20">
+    <div className="d-flex justify-content-between align-items-center mb10">
+      <label className="heading-color ff-heading fw500 mb0">Services</label>
+      <button
+        type="button"
+        className="ud-btn btn-thm"
+        onClick={() => {
+          const next = Array.isArray(profile_details?.services_list)
+            ? [...profile_details.services_list]
+            : [];
+          next.push("");
+          setProfileDetails((s) => ({ ...s, services_list: next }));
+        }}
+      >
+        + Add Service
+      </button>
+    </div>
+
+    <table className="table table-bordered">
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th style={{ width: 80 }}>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {(profile_details?.services_list ?? []).map((service, idx) => (
+          <tr key={idx}>
+            <td>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Service"
+                value={service}
+                onChange={(e) => {
+                  const next = [...(profile_details?.services_list ?? [])];
+                  next[idx] = e.target.value;
+                  setProfileDetails((s) => ({ ...s, services_list: next }));
+                }}
+              />
+            </td>
+            <td className="text-center">
+              <span
+                className="flaticon-delete text-thm2"
+                style={{ cursor: "pointer" }}
+                title="Remove service"
+                onClick={() => {
+                  const next = [...(profile_details?.services_list ?? [])];
+                  next.splice(idx, 1);
+                  setProfileDetails((s) => ({ ...s, services_list: next }));
+                }}
+              />
+            </td>
+          </tr>
+        ))}
+        {(!profile_details?.services_list || profile_details.services_list.length === 0) && (
+          <tr>
+            <td colSpan={2} className="text-center text-muted">No services added</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+
+
+      {/* Fixed Price Projects (table like Services) */}
+      {(() => {
+        // Normalize to an editable array even if backend returns an object map
+        const raw = profile_details?.fixed_price_projects;
+        const projectsArray = Array.isArray(raw)
+          ? raw
+          : raw && typeof raw === 'object'
+            ? Object.entries(raw).map(([domain, price]) => ({ domain, price }))
+            : [];
+
+        const setFromArray = (arr) => setProfileDetails((s) => ({ ...s, fixed_price_projects: arr }));
+
+        return (
+          <div className="col-md-12">
+            <div className="mb20">
               <div className="d-flex justify-content-between align-items-center mb10">
-                <strong className="me-2 text-capitalize">{cat}</strong>
+                <label className="heading-color ff-heading fw500 mb0">Fixed Price Projects</label>
                 <button
                   type="button"
                   className="ud-btn btn-thm"
                   onClick={() => {
-                    const list = Array.isArray(profile_details?.services?.[cat]) ? [...profile_details.services[cat]] : [];
-                    list.push("");
-                    setProfileDetails((s) => ({ ...s, services: { ...(s.services || {}), [cat]: list } }));
+                    const next = [...projectsArray];
+                    next.push({ domain: "", price: "" });
+                    setFromArray(next);
                   }}
                 >
-                  + Add Item
+                  + Add Fixed Price Project
                 </button>
               </div>
-              {(profile_details?.services?.[cat] ?? []).map((svc, idx) => (
-                <div key={`${cat}-${idx}`} className="d-flex align-items-center mb10">
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder={`Add ${cat} service`}
-                    value={svc}
-                    onChange={(e) => {
-                      const list = [...(profile_details?.services?.[cat] ?? [])];
-                      list[idx] = e.target.value;
-                      setProfileDetails((s) => ({ ...s, services: { ...(s.services || {}), [cat]: list } }));
-                    }}
-                  />
-                  <a
-                    className="tag-delt text-thm2 ml10"
-                    onClick={() => {
-                      const list = [...(profile_details?.services?.[cat] ?? [])];
-                      list.splice(idx, 1);
-                      setProfileDetails((s) => ({ ...s, services: { ...(s.services || {}), [cat]: list } }));
-                    }}
-                    title="Remove service"
-                    role="button"
-                  >
-                    <span className="flaticon-delete text-thm2" />
-                  </a>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Fixed Price Projects (editable known fields) */}
-      <div className="col-md-12">
-        <div className="mb20">
-          <label className="heading-color ff-heading fw500 mb10">Fixed Price Projects</label>
-          <div className="row">
-            <div className="col-sm-6 mb10">
-              <label className="small mb5">Website</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="e.g. 500"
-                value={profile_details?.fixed_price_projects?.website ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                  setProfileDetails((s) => ({
-                    ...s,
-                    fixed_price_projects: { ...(s.fixed_price_projects || {}), website: v }
-                  }));
-                }}
-              />
-            </div>
-            <div className="col-sm-6 mb10">
-              <label className="small mb5">API Integration</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="e.g. 300"
-                value={profile_details?.fixed_price_projects?.api_integration ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                  setProfileDetails((s) => ({
-                    ...s,
-                    fixed_price_projects: { ...(s.fixed_price_projects || {}), api_integration: v }
-                  }));
-                }}
-              />
+              <table className="table table-bordered">
+                <thead>
+                  <tr>
+                    <th>Domain</th>
+                    <th>Price</th>
+                    <th style={{ width: 80 }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projectsArray.map((p, idx) => (
+                    <tr key={idx}>
+                      <td>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="e.g. Website"
+                          value={p?.domain || ""}
+                          onChange={(e) => {
+                            const next = [...projectsArray];
+                            next[idx] = { ...(next[idx] || {}), domain: e.target.value };
+                            setFromArray(next);
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="e.g. 500"
+                          value={p?.price || ""}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                            const next = [...projectsArray];
+                            next[idx] = { ...(next[idx] || {}), price: val };
+                            setFromArray(next);
+                          }}
+                        />
+                      </td>
+                      <td className="text-center">
+                        <span
+                          className="flaticon-delete text-thm2"
+                          style={{ cursor: "pointer" }}
+                          title="Remove project"
+                          onClick={() => {
+                            const next = [...projectsArray];
+                            next.splice(idx, 1);
+                            setFromArray(next);
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                  {projectsArray.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="text-center text-muted">No projects added</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
-      {/* Availability */}
+
+      {/* Availability
       <div className="col-md-12">
         <div className="mb20">
           <label className="heading-color ff-heading fw500 mb10">Availability</label>
@@ -666,7 +1038,7 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Status and Wallet (read-only) */}
       <div className="col-sm-6">
@@ -675,12 +1047,12 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
           <input type="text" className="form-control" value={profile_details?.status ?? ""} readOnly />
         </div>
       </div>
-      <div className="col-sm-6">
+      {/* <div className="col-sm-6">
         <div className="mb20">
           <label className="heading-color ff-heading fw500 mb10">Wallet Balance</label>
           <input type="text" className="form-control" value={profile_details?.wallet_balance ?? ""} readOnly />
         </div>
-      </div>
+      </div> */}
 
       {/* Verification (read-only) */}
       <div className="col-sm-6">
@@ -689,14 +1061,14 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
           <input type="text" className="form-control" value={profile_details?.verified ? "true" : "false"} readOnly />
         </div>
       </div>
-      <div className="col-md-12">
+      {/* <div className="col-md-12">
         <div className="mb20">
           <label className="heading-color ff-heading fw500 mb10">Remarks</label>
           <input type="text" className="form-control" value={profile_details?.remarks ?? ""} readOnly />
         </div>
-      </div>
+      </div> */}
 
-     {/* Certifications table */}
+{/* Certifications table */}
 <div className="col-md-12">
   <div className="mb20">
     <div className="d-flex justify-content-between align-items-center mb10">
@@ -725,51 +1097,60 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
         </tr>
       </thead>
       <tbody>
-        {(profile_details?.certifications ?? []).map((c, idx) => (
-          <tr key={idx}>
-            <td>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Certification name"
-                value={c?.name || ""}
-                onChange={(e) => {
-                  const next = [...(profile_details?.certifications ?? [])];
-                  next[idx] = { ...(next[idx] || {}), name: e.target.value };
-                  setProfileDetails((s) => ({ ...s, certifications: next }));
-                }}
-              />
-            </td>
-            <td>
-              <input
-                type="url"
-                className="form-control"
-                placeholder="Certification URL (optional)"
-                value={c?.url || ""}
-                onChange={(e) => {
-                  const next = [...(profile_details?.certifications ?? [])];
-                  next[idx] = { ...(next[idx] || {}), url: e.target.value };
-                  setProfileDetails((s) => ({ ...s, certifications: next }));
-                }}
-              />
-            </td>
-            <td className="text-center">
-              <span
-                className="flaticon-delete text-thm2"
-                style={{ cursor: "pointer" }}
-                onClick={() => {
-                  const next = [...(profile_details?.certifications ?? [])];
-                  next.splice(idx, 1);
-                  setProfileDetails((s) => ({ ...s, certifications: next }));
-                }}
-              ></span>
+        {(profile_details?.certifications ?? []).length === 0 ? (
+          <tr>
+            <td colSpan={3} className="text-center text-muted">
+              No certifications found
             </td>
           </tr>
-        ))}
+        ) : (
+          profile_details.certifications.map((c, idx) => (
+            <tr key={idx}>
+              <td>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Certification name"
+                  value={c?.name || ""}
+                  onChange={(e) => {
+                    const next = [...(profile_details?.certifications ?? [])];
+                    next[idx] = { ...(next[idx] || {}), name: e.target.value };
+                    setProfileDetails((s) => ({ ...s, certifications: next }));
+                  }}
+                />
+              </td>
+              <td>
+                <input
+                  type="url"
+                  className="form-control"
+                  placeholder="Certification URL (optional)"
+                  value={c?.url || ""}
+                  onChange={(e) => {
+                    const next = [...(profile_details?.certifications ?? [])];
+                    next[idx] = { ...(next[idx] || {}), url: e.target.value };
+                    setProfileDetails((s) => ({ ...s, certifications: next }));
+                  }}
+                />
+              </td>
+              <td className="text-center">
+                <span
+                  className="flaticon-delete text-thm2"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => {
+                    const next = [...(profile_details?.certifications ?? [])];
+                    next.splice(idx, 1);
+                    setProfileDetails((s) => ({ ...s, certifications: next }));
+                  }}
+                ></span>
+              </td>
+            </tr>
+          ))
+        )}
       </tbody>
     </table>
   </div>
 </div>
+
 
 {/* Portfolio table */}
 <div className="col-md-12">
@@ -801,65 +1182,74 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
         </tr>
       </thead>
       <tbody>
-        {(profile_details?.portfolio_projects ?? []).map((p, idx) => (
-          <tr key={idx}>
-            <td>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Title"
-                value={p?.title || ""}
-                onChange={(e) => {
-                  const next = [...(profile_details?.portfolio_projects ?? [])];
-                  next[idx] = { ...(next[idx] || {}), title: e.target.value };
-                  setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
-                }}
-              />
-            </td>
-            <td>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Year"
-                value={p?.year || ""}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, "");
-                  const next = [...(profile_details?.portfolio_projects ?? [])];
-                  next[idx] = { ...(next[idx] || {}), year: val };
-                  setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
-                }}
-              />
-            </td>
-            <td>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Description"
-                value={p?.description || ""}
-                onChange={(e) => {
-                  const next = [...(profile_details?.portfolio_projects ?? [])];
-                  next[idx] = { ...(next[idx] || {}), description: e.target.value };
-                  setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
-                }}
-              />
-            </td>
-            <td className="text-center">
-              <span
-                className="flaticon-delete text-thm2"
-                style={{ cursor: "pointer" }}
-                onClick={() => {
-                  const next = [...(profile_details?.portfolio_projects ?? [])];
-                  next.splice(idx, 1);
-                  setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
-                }}
-              ></span>
+        {(profile_details?.portfolio_projects ?? []).length === 0 ? (
+          <tr>
+            <td colSpan={4} className="text-center text-muted">
+              No portfolio found
             </td>
           </tr>
-        ))}
+        ) : (
+          profile_details.portfolio_projects.map((p, idx) => (
+            <tr key={idx}>
+              <td>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Title"
+                  value={p?.title || ""}
+                  onChange={(e) => {
+                    const next = [...(profile_details?.portfolio_projects ?? [])];
+                    next[idx] = { ...(next[idx] || {}), title: e.target.value };
+                    setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
+                  }}
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Year"
+                  value={p?.year || ""}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    const next = [...(profile_details?.portfolio_projects ?? [])];
+                    next[idx] = { ...(next[idx] || {}), year: val };
+                    setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
+                  }}
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Description"
+                  value={p?.description || ""}
+                  onChange={(e) => {
+                    const next = [...(profile_details?.portfolio_projects ?? [])];
+                    next[idx] = { ...(next[idx] || {}), description: e.target.value };
+                    setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
+                  }}
+                />
+              </td>
+              <td className="text-center">
+                <span
+                  className="flaticon-delete text-thm2"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => {
+                    const next = [...(profile_details?.portfolio_projects ?? [])];
+                    next.splice(idx, 1);
+                    setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
+                  }}
+                ></span>
+              </td>
+            </tr>
+          ))
+        )}
       </tbody>
     </table>
   </div>
 </div>
+
 
       {/* Bio in textfield */}
       <div className="col-md-12">
@@ -875,7 +1265,7 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
         </div>
       </div>
 
-    {/* Education table */}
+{/* Education table */}
 <div className="col-md-12">
   <div className="mb20">
     <div className="d-flex justify-content-between align-items-center mb10">
@@ -906,75 +1296,83 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
         </tr>
       </thead>
       <tbody>
-        {(profile_details?.education ?? []).map((edu, idx) => (
-          <tr key={idx}>
-            <td>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Degree"
-                value={edu?.degree || ""}
-                onChange={(e) => {
-                  const next = [...(profile_details?.education ?? [])];
-                  next[idx] = { ...(next[idx] || {}), degree: e.target.value };
-                  setProfileDetails((s) => ({ ...s, education: next }));
-                }}
-              />
-            </td>
-            <td>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Institution"
-                value={edu?.institution || ""}
-                onChange={(e) => {
-                  const next = [...(profile_details?.education ?? [])];
-                  next[idx] = { ...(next[idx] || {}), institution: e.target.value };
-                  setProfileDetails((s) => ({ ...s, education: next }));
-                }}
-              />
-            </td>
-            <td>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Start Year"
-                value={edu?.start_year || ""}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, "");
-                  const next = [...(profile_details?.education ?? [])];
-                  next[idx] = { ...(next[idx] || {}), start_year: val };
-                  setProfileDetails((s) => ({ ...s, education: next }));
-                }}
-              />
-            </td>
-            <td>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="End Year"
-                value={edu?.end_year || ""}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, "");
-                  const next = [...(profile_details?.education ?? [])];
-                  next[idx] = { ...(next[idx] || {}), end_year: val };
-                  setProfileDetails((s) => ({ ...s, education: next }));
-                }}
-              />
-            </td>
-            <td className="text-center">
-              <span
-                className="flaticon-delete text-thm2"
-                style={{ cursor: "pointer" }}
-                onClick={() => {
-                  const next = [...(profile_details?.education ?? [])];
-                  next.splice(idx, 1);
-                  setProfileDetails((s) => ({ ...s, education: next }));
-                }}
-              ></span>
+        {(profile_details?.education ?? []).length === 0 ? (
+          <tr>
+            <td colSpan={5} className="text-center text-muted">
+              No education found
             </td>
           </tr>
-        ))}
+        ) : (
+          profile_details.education.map((edu, idx) => (
+            <tr key={idx}>
+              <td>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Degree"
+                  value={edu?.degree || ""}
+                  onChange={(e) => {
+                    const next = [...(profile_details?.education ?? [])];
+                    next[idx] = { ...(next[idx] || {}), degree: e.target.value };
+                    setProfileDetails((s) => ({ ...s, education: next }));
+                  }}
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Institution"
+                  value={edu?.institution || ""}
+                  onChange={(e) => {
+                    const next = [...(profile_details?.education ?? [])];
+                    next[idx] = { ...(next[idx] || {}), institution: e.target.value };
+                    setProfileDetails((s) => ({ ...s, education: next }));
+                  }}
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Start Year"
+                  value={edu?.start_year || ""}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    const next = [...(profile_details?.education ?? [])];
+                    next[idx] = { ...(next[idx] || {}), start_year: val };
+                    setProfileDetails((s) => ({ ...s, education: next }));
+                  }}
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="End Year"
+                  value={edu?.end_year || ""}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    const next = [...(profile_details?.education ?? [])];
+                    next[idx] = { ...(next[idx] || {}), end_year: val };
+                    setProfileDetails((s) => ({ ...s, education: next }));
+                  }}
+                />
+              </td>
+              <td className="text-center">
+                <span
+                  className="flaticon-delete text-thm2"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => {
+                    const next = [...(profile_details?.education ?? [])];
+                    next.splice(idx, 1);
+                    setProfileDetails((s) => ({ ...s, education: next }));
+                  }}
+                ></span>
+              </td>
+            </tr>
+          ))
+        )}
       </tbody>
     </table>
   </div>
@@ -1028,50 +1426,314 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
         </div>
       </div>
 
-{/* PAN (read-only) */}
+        {/* Save Button: enabled only when data has changed; green when enabled */}
+<div className="col-md-12">
+  <div className="text-start">
+    <button
+      type="submit"
+      disabled={!hasChanges}
+      className={`ud-btn ${hasChanges ? "btn-thm" : "btn-secondary"} `}
+      style={{
+        cursor: hasChanges ? "pointer" : "not-allowed",
+        opacity: hasChanges ? 1 : 0.6, // greyed-out effect
+      }}
+    >
+      Save Changes
+      <i className="fal fa-arrow-right-long" />
+    </button>
+  </div>
+
+    {/* Divider */}
+  <hr className="my30" style={{ borderTop: "1px solid #ddd" }} />
+</div>
+
+      {/* Verification Sections */}
+      {/* Freelancer (role_id 2): PAN only */}
+      {Array.isArray(form.role_id) && form.role_id.includes(2) && (
+        <form className="form-style1" onSubmit={(e) => { e.preventDefault(); handleCompanyVerificationSubmit(); }}>
+          <div className="row">
+            <div className="bdrb1 pb15 mb25"><h6 className="list-title">PAN Verification</h6></div>
+            <div className="col-sm-6">
+              <div className="mb20">
+                <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
+                  PAN Number
+                  {profile_details?.pan_verified && (
+                    <i className="fas fa-check-circle text-success ml10" title="Verified" />
+                  )}
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="ABCDE1234F"
+                  value={profile_details?.pan_number || ""}
+                  readOnly={isPanReadOnly}
+                  onChange={(e) => setProfileDetails((d) => ({ ...d, pan_number: e.target.value }))}
+                />
+                {/* <div className="form-check mt10">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    id="panVerifiedOnly"
+                    checked={!!profile_details?.pan_verified}
+                    onChange={(e) => setProfileDetails((d) => ({ ...d, pan_verified: e.target.checked }))}
+                  />
+                  <label htmlFor="panVerifiedOnly" className="form-check-label">PAN Verified</label>
+                </div> */}
+              </div>
+            </div>
+            <div className="col-md-12">
+              <div className="text-start">
+                <button
+                  type="submit"
+                  disabled={!hasVerificationChanges}
+                  className={`ud-btn ${hasVerificationChanges ? "btn-thm" : "btn-secondary"}`}
+                  style={{ cursor: hasVerificationChanges ? "pointer" : "not-allowed", opacity: hasVerificationChanges ? 1 : 0.6 }}
+                >
+                  Request Verification
+                  <i className="fal fa-upload" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      )}
+
+
+   {/* Enterprise-specific fields */}
+{Array.isArray(form.role_id) && form.role_id.includes(3) && (
+  <>
+    <div className="bdrb1 pb15 mb25">
+      <h6 className="list-title">Company Verification</h6>
+    </div>
+
+    {/* PAN */}
+    <div className="col-sm-6">
+      <div className="mb20">
+        <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
+          PAN Number
+          {profile_details?.pan_verified && (
+            <i className="fas fa-check-circle text-success ml10" title="Verified" />
+          )}
+        </label>
+        <input
+          type="text"
+          className="form-control"
+          placeholder="ABCDE1234F"
+          value={profile_details?.pan_number || ""}
+          readOnly={!!profile_details?.pan_verified} // editable if not verified
+          onChange={(e) =>
+            setProfileDetails((d) => ({ ...d, pan_number: e.target.value }))
+          }
+        />
+      </div>
+    </div>
+
+    {/* MCA No */}
+    <div className="col-sm-6">
+      <div className="mb20">
+        <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
+          MCA Incorporation No
+          {profile_details?.mcs_verified && (
+            <i className="fas fa-check-circle text-success ml10" title="Verified" />
+          )}
+        </label>
+        <input
+          type="text"
+          className="form-control"
+          placeholder="CIN / Incorporation No"
+          value={profile_details?.mcs_incorporation_no || ""}
+          readOnly={!!profile_details?.mcs_verified}
+          onChange={(e) =>
+            setProfileDetails((d) => ({ ...d, mcs_incorporation_no: e.target.value }))
+          }
+        />
+      </div>
+    </div>
+
+{/* MCA Doc Upload */}
 <div className="col-sm-6">
-  <div className="mb20 position-relative">
-    <label className="heading-color ff-heading fw500 mb10">PAN</label>
+  <div className="mb20">
+    <label className="heading-color ff-heading fw500 mb10">
+      MCA Incorporation Doc
+    </label>
+
+    {/* Input field */}
     <input
       type="text"
-      className="form-control pe-5"
-      value={profile_details?.pan_number || ""}
+      className="form-control mb10"
+      placeholder="Insert document URL"
+      value={profile_details?.mcs_incorporation_image || ""}
       readOnly
-      style={{
-        paddingRight: "2.2rem", // 👈 ensures space for icon
-      }}
     />
-    {profile_details?.pan_verified && (
-      <span
-        style={{
-          position: "absolute",
-          right: "15px",       // 👈 push inside input border
-          top: "50%",
-          transform: "translateY(-50%)",
-          pointerEvents: "none",
-          backgroundColor: "white", // 👈 hides input border behind icon
-          borderRadius: "50%",
-        }}
-      >
-        <i className="fa fa-check-circle" style={{ color: "#28a745", fontSize: "1.2rem" }} />
-      </span>
+
+    {/* Upload + View + Remove */}
+    {!profile_details?.mcs_verified && (
+      <div className="d-flex align-items-center mt10">
+        {/* Hidden file input */}
+        <input
+          id="mcaDocInsert"
+          type="file"
+          accept=".png,.jpg,.jpeg,.pdf"
+          className="d-none"
+          onChange={(e) => {
+            if (e.target.files.length > 0) {
+              const file = e.target.files[0];
+              const url = URL.createObjectURL(file);
+
+              // Put selected file URL in input
+              setMcsDocPreview(url);
+              setProfileDetails((d) => ({
+                ...d,
+                mcs_incorporation_image: url,
+              }));
+            }
+          }}
+        />
+
+        {/* Button changes dynamically */}
+        <button
+          type="button"
+          className="ud-btn btn-thm px20 py10 mr10"
+          onClick={() => {
+            if (mcsDocPreview || profile_details?.mcs_incorporation_image) {
+              // Upload action → Swal
+              Swal.fire({
+                icon: "success",
+                title: "Uploaded!",
+                text: "Document uploaded successfully",
+                timer: 2000,
+                showConfirmButton: false,
+              });
+            } else {
+              // First click → open file chooser
+              document.getElementById("mcaDocInsert").click();
+            }
+          }}
+        >
+          <i className="fal fa-upload mr5" />
+          {mcsDocPreview || profile_details?.mcs_incorporation_image
+            ? "Upload Doc"
+            : "Insert Doc"}
+        </button>
+
+        {/* Eye + Remove icons (only if doc available) */}
+        {(mcsDocPreview || profile_details?.mcs_incorporation_image) && (
+          <>
+            {/* View */}
+            <a
+              href={mcsDocPreview || profile_details?.mcs_incorporation_image}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-outline-dark px10 py8 mr5"
+              style={{ borderRadius: "50%" }}
+            >
+              <i className="fal fa-eye"></i>
+            </a>
+
+            {/* Remove */}
+            <button
+              type="button"
+              className="btn btn-outline-danger px10 py8"
+              style={{ borderRadius: "50%" }}
+              onClick={() => {
+                setMcsDocPreview(null);
+                setProfileDetails((d) => ({
+                  ...d,
+                  mcs_incorporation_image: "",
+                }));
+              }}
+            >
+              <i className="fal fa-times"></i>
+            </button>
+          </>
+        )}
+      </div>
     )}
   </div>
 </div>
 
 
+
+
+    {/* GSTIN */}
+    <div className="col-sm-6">
+      <div className="mb20">
+        <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
+          GSTIN Number
+          {profile_details?.gstin_verified && (
+            <i className="fas fa-check-circle text-success ml10" title="Verified" />
+          )}
+        </label>
+        <input
+          type="text"
+          className="form-control"
+          placeholder="22AAAAA0000A1Z5"
+          value={profile_details?.gstin_number || ""}
+          readOnly={!!profile_details?.gstin_verified}
+          onChange={(e) =>
+            setProfileDetails((d) => ({ ...d, gstin_number: e.target.value }))
+          }
+        />
+      </div>
+    </div>
+
+    {/* Company status
+    <div className="col-sm-3">
+      <div className="form-check mb20">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          id="companyVerified"
+          checked={!!profile_details?.verified}
+          onChange={(e) =>
+            setProfileDetails((d) => ({ ...d, verified: e.target.checked }))
+          }
+        />
+        <label htmlFor="companyVerified" className="form-check-label">
+          Verified
+        </label>
+      </div>
+    </div>
+    <div className="col-sm-9">
+      <div className="mb20">
+        <label className="heading-color ff-heading fw500 mb10">Remarks</label>
+        <input
+          type="text"
+          className="form-control"
+          placeholder="verification_pending / notes"
+          value={profile_details?.remarks || ""}
+          onChange={(e) =>
+            setProfileDetails((d) => ({ ...d, remarks: e.target.value }))
+          }
+        />
+      </div>
+    </div> */}
+
+    {/* Send for Verification */}
+    <div className="col-md-12">
+      <div className="text-start">
+        <button
+          type="button"
+          disabled={!hasVerificationChanges}
+          onClick={handleCompanyVerificationSubmit}
+          className={`ud-btn ${hasVerificationChanges ? "btn-thm" : "btn-secondary"}`}
+          style={{
+            cursor: hasVerificationChanges ? "pointer" : "not-allowed",
+            opacity: hasVerificationChanges ? 1 : 0.6,
+          }}
+        >
+          Send for Verification <i className="fal fa-upload" />
+        </button>
+      </div>
+    </div>
+  </>
+)}
+
+
     </>
   )}
 
-  {/* Save Button placeholder: currently UI-only */}
-  <div className="col-md-12">
-    <div className="text-start">
-      <button type="button" className="ud-btn btn-secondary" onClick={() => console.log("Updated details (UI only):", { profile: form, details: profile_details })}>
-        Save (UI only)
-        <i className="fal fa-arrow-right-long" />
-      </button>
-    </div>
-  </div>
+
 </>
 
               )}

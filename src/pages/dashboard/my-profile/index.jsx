@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
+import Swal from "sweetalert2";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import MyProfileInfo from "@/components/dashboard/section/MyProfileInfo";
 
@@ -12,62 +13,67 @@ const metadata = {
 };
 
 export default function DasbPageMyProfile() {
-
-   const [profileData, setProfileData] = useState(null);
+  const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-   useEffect(() => {
-    // Guard against double-invoke in React 18 StrictMode (dev only)
-    const didRunRef = { current: false };
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (__profileRequestInFlight) {
+        console.log("Skipped duplicate profile request (in flight)");
+        return;
+      }
+      __profileRequestInFlight = true;
 
-   const fetchProfile = async () => {
-  if (didRunRef.current) return;
-  didRunRef.current = true;
+      try {
+        const authData = JSON.parse(localStorage.getItem("auth"));
+        const userId = authData?.data?.userId;
+        if (!userId) {
+          setError("Missing user session. Please sign in again.");
+          Swal.fire({ icon: "error", title: "Not signed in", text: "Please log in to view your profile." });
+          return;
+        }
 
-  try {
-    const authData = JSON.parse(localStorage.getItem("auth"));
-    const userId = authData?.data?.userId;
-    if (!userId) return;
+        const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
+        const response = await axios.post(`${BASE_URL}/profile-service/getdetails`, { user_id: userId });
 
-    const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
-
-    if (__profileRequestInFlight) {
-      console.log("Skipped duplicate profile request (in flight)");
-      return;
-    }
-    __profileRequestInFlight = true;
-
-    const response = await axios.post(`${BASE_URL}/profile-service/getdetails`, {
-      user_id: userId,
-    });
-    __profileRequestInFlight = false;
-
-    // ✅ Adapt to API shape
-    const apiData = response?.data;
-    if (apiData?.profile) {
-      console.log("Fetched profile:", apiData);
-      setProfileData(apiData);
-    } else {
-      console.error("Failed to fetch profile: Missing profile data");
-    }
-  } catch (error) {
-    console.error("Error fetching profile:", error);
-  } finally {
-    setLoading(false);
-  }
-};
-
+        const apiData = response?.data;
+        if (apiData?.profile) {
+          setProfileData(apiData);
+        } else {
+          const msg = "Failed to load profile: missing data.";
+          setError(msg);
+          Swal.fire({ icon: "error", title: "Profile unavailable", text: msg });
+        }
+      } catch (err) {
+        const msg = err?.response?.data?.message || err?.message || "Unable to reach profile service.";
+        console.error("Error fetching profile:", err);
+        setError(msg);
+        Swal.fire({ icon: "error", title: "Couldn’t load profile", text: msg });
+      } finally {
+        __profileRequestInFlight = false; // always release the lock
+        setLoading(false);
+      }
+    };
 
     fetchProfile();
   }, []);
-
 
   return (
     <>
       <MetaComponent meta={metadata} />
       <MobileNavigation2 />
       <DashboardLayout profile={profileData}>
+        {/* Render content even on error so the page isn’t blank */}
         {!loading && profileData && <MyProfileInfo profile={profileData} />}
+        {!loading && !profileData && (
+          <div className="p30">
+            <h4 className="mb10">My Profile</h4>
+            <p className="text-muted mb0">
+              {error ? error : "No profile data available."}
+            </p>
+          </div>
+        )}
       </DashboardLayout>
     </>
   );
