@@ -15,6 +15,14 @@ export default function FreelancerDetail1({ data }) {
     ? `${details.job_success}%`
     : (typeof details?.job_success === "number" ? `${details.job_success}%` : (fallbackJobSuccess || "N/A"));
 
+  // Safely build hourly rate from details or profile; avoid referencing an undefined variable
+  const hourlyRate =
+    typeof details?.hourly_rate === "number"
+      ? `$${details.hourly_rate}/hr`
+      : typeof profile?.hourly_rate === "number"
+        ? `$${profile.hourly_rate}/hr`
+        : "N/A";
+
   const description = details?.bio ?? profile?.bio ?? "N/A";
 
   return (
@@ -38,33 +46,11 @@ export default function FreelancerDetail1({ data }) {
                 <div className="col-sm-6 col-xl-3">
                   <div className="iconbox-style1 contact-style d-flex align-items-start mb30">
                     <div className="icon flex-shrink-0">
-                      <span className="flaticon-goal" />
-                    </div>
-                    <div className="details">
-                      <h5 className="title">Total Jobs</h5>
-                      <p className="mb-0 text">N/A</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-sm-6 col-xl-3">
-                  <div className="iconbox-style1 contact-style d-flex align-items-start mb30">
-                    <div className="icon flex-shrink-0">
                       <span className="flaticon-fifteen" />
                     </div>
                     <div className="details">
-                      <h5 className="title">Total Hours</h5>
-                      <p className="mb-0 text">N/A</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-sm-6 col-xl-3">
-                  <div className="iconbox-style1 contact-style d-flex align-items-start mb30">
-                    <div className="icon flex-shrink-0">
-                      <span className="flaticon-file-1" />
-                    </div>
-                    <div className="details">
-                      <h5 className="title">In Queue Service</h5>
-                      <p className="mb-0 text">N/A</p>
+                      <h5 className="title">Hourly Rate</h5>
+                      <p className="mb-0 text">{hourlyRate}</p>
                     </div>
                   </div>
                 </div>
@@ -108,7 +94,7 @@ export default function FreelancerDetail1({ data }) {
                 <h4 className="mb30">Featured Services</h4>
                 <div className="row mb35">
                   {product1.slice(0, 3).map((item, i) => (
-                    <div className="col-sm-6 col-xl-4" key={i}>
+                    <div className="col-12 col-md-6" key={i}>
                       <FreelancerFutureCard1 data={item} />
                     </div>
                   ))}

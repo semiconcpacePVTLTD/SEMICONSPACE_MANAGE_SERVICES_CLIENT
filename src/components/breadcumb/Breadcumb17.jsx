@@ -11,7 +11,7 @@ export default function Breadcumb17({ data: apiData }) {
 
   const img = profile?.profile_image || local?.img || "/images/team/fl-1.png";
   const name = profile?.name || local?.name || "N/A";
-  const profession = profile?.company_name ?? local?.title ?? "N/A";
+  const profession = profile?.bio ?? local?.title ?? "N/A";
   const location = details?.location ?? profile?.location ?? "N/A";
   const memberSince = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString()

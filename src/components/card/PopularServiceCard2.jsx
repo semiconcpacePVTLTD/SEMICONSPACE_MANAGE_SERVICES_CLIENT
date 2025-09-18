@@ -8,12 +8,13 @@ export default function PopularServiceCard2({ data, text1 = false }) {
   return (
     <>
       <div className="listing-style1 listi-style2 d-block d-xl-flex">
-        <div className="list-thumb flex-shrink-0">
+        <div className="list-thumb flex-shrink-0" style={{ width: 260 }}>
           {data?.img2 ? (
             <img
               className="w-100 h-100 object-fit-cover"
               src={data.img2}
               alt="image"
+              style={{ minHeight: 180 }}
             />
           ) : (
             <div className="w-100 h-100 object-fit-cover bg-light" style={{ minHeight: 180 }} />

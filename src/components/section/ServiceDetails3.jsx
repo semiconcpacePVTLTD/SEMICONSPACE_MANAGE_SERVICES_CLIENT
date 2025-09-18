@@ -12,13 +12,14 @@ import ServiceDetailSlider2 from "../element/ServiceDetailSlider2";
 import { useParams } from "react-router-dom";
 import { product1 } from "@/data/product";
 
-export default function ServiceDetail3() {
+export default function ServiceDetail3({ service, loading }) {
   const isMatchedScreen = useScreen(1216);
   const { id } = useParams();
 
   const navigate = useNavigate();
 
-  const data = product1.find((item) => item.id == id);
+  // Use service prop if provided, otherwise fallback to product1 lookup
+  const data = service || (id ? product1.find((item) => item.id == id) : null);
 
   // PCB-specific sidebar freelancer data
   const freelancers = [
@@ -87,7 +88,9 @@ export default function ServiceDetail3() {
                   <div className="row  px30 bdr1 pt30 pb-0 mb30 bg-white bdrs12 wow fadeInUp default-box-shadow1">
                     <div className="col-xl-12 mb30 pb30 bdrb1">
                       <div className="position-relative">
-                        {data ? (
+                        {loading ? (
+                          <h2>Loading...</h2>
+                        ) : data ? (
                           <h2>{data.title}</h2>
                         ) : (
                           <h2>
@@ -167,42 +170,36 @@ export default function ServiceDetail3() {
                     </div>
                   </div>
 
-                  <ServiceDetailSlider2 />
+                  <ServiceDetailSlider2 images={data?.imgURLs} />
                   <div className="service-about">
                     <div className="px30 bdr1 pt30 pb-0 mb30 bg-white bdrs12 wow fadeInUp default-box-shadow1">
-                      <h4>About PCB Services</h4>
-                      <p className="text mb30">
-                        I provide end-to-end PCB engineering services including
-                        schematic design, PCB layout (2–8 layers), high-speed
-                        routing, DFM/DFT checks, BOM selection, and prototype
-                        bring-up. Deliverables include native design files
-                        (Altium/KiCad), Gerbers, fabrication drawings, assembly
-                        files, and test documentation.
+                      <h4>About</h4>
+                      <p className="text mb30" style={{ whiteSpace: "pre-line" }}>
+                        {loading ? "Loading..." : data?.longDescription || data?.description || "No description available."}
                       </p>
-                      <p className="text mb-0">Capabilities:</p>
-                      <p className="text mb-0">
-                        1) High-speed DDR/USB/Ethernet routing with impedance
-                        control
-                      </p>
-                      <p className="text mb-0">
-                        2) RF/BLE/Wi‑Fi layout with ground stitching and
-                        matching
-                      </p>
-                      <p className="text mb-0">
-                        3) Power electronics: DC‑DC, protections, thermal design
-                      </p>
-                      <p className="text mb-0">
-                        4) EMC/EMI best practices and compliance-oriented layout
-                      </p>
-                      <p className="text mb30">
-                        5) Rapid prototyping and small-batch production support
-                      </p>
-                      <p className="text mb30">
-                        Delivery options: standard (5–7 days) or expedited
-                        (48–72 hours) depending on board complexity and layer
-                        count. I also coordinate with fabricators for stack-up
-                        and manufacturability to minimize re-spins.
-                      </p>
+                      {data?.capabilities && (
+                        <>
+                          <p className="text mb-0">Capabilities:</p>
+                          <p className="text mb30" style={{ whiteSpace: "pre-line" }}>
+                            {data.capabilities}
+                          </p>
+                        </>
+                      )}
+                      {data?.tools && (
+                        <p className="text mb30" style={{ whiteSpace: "pre-line" }}>
+                          Tools: {data.tools}
+                        </p>
+                      )}
+                      {data?.other1 && (
+                        <p className="text mb30" style={{ whiteSpace: "pre-line" }}>
+                          {data.other1}
+                        </p>
+                      )}
+                      {data?.other2 && (
+                        <p className="text mb30" style={{ whiteSpace: "pre-line" }}>
+                          {data.other2}
+                        </p>
+                      )}
                       <div className="d-flex align-items-start mb50">
                         <div className="list1">
                           <h6>Design tools</h6>
@@ -446,12 +443,12 @@ export default function ServiceDetail3() {
                                     transition: "background-color 0.2s ease",
                                   }}
                                   onMouseEnter={(e) =>
-                                    (e.currentTarget.style.backgroundColor =
-                                      "#1d4ed8")
+                                  (e.currentTarget.style.backgroundColor =
+                                    "#1d4ed8")
                                   }
                                   onMouseLeave={(e) =>
-                                    (e.currentTarget.style.backgroundColor =
-                                      "#2563eb")
+                                  (e.currentTarget.style.backgroundColor =
+                                    "#2563eb")
                                   }
                                 >
                                   Message Freelancer

@@ -6,15 +6,21 @@ import "swiper/css/navigation";
 import "swiper/css/thumbs";
 import { FreeMode, Navigation, Thumbs } from "swiper";
 
-const gigImages = [
+const defaultImages = [
   "/images/listings/service-details-1.jpg",
   "/images/listings/service-details-1.jpg",
   "/images/listings/service-details-1.jpg",
 ];
 
-export default function ServiceDetailSlider2() {
+export default function ServiceDetailSlider2({ images }) {
   const [thumbsSwiper, setThumbsSwiper] = useState(null);
   const [showSwiper, setShowSwiper] = useState(false);
+
+  // Use provided images or fallback to default
+  const displayImages = images && Array.isArray(images) && images.length > 0
+    ? images
+    : defaultImages;
+
   useEffect(() => {
     setShowSwiper(true);
   }, []);
@@ -41,7 +47,7 @@ export default function ServiceDetailSlider2() {
                 modules={[FreeMode, Navigation, Thumbs]}
                 className="mySwiper2"
               >
-                {gigImages.map((item, i) => (
+                {displayImages.map((item, i) => (
                   <SwiperSlide key={i}>
                     <img src={item} alt="gallery" className="w-100 h-auto" />
                   </SwiperSlide>
@@ -66,7 +72,7 @@ export default function ServiceDetailSlider2() {
               modules={[FreeMode, Navigation, Thumbs]}
               className="mySwiper ui-service-gig-slder-bottom"
             >
-              {gigImages.map((item, i) => (
+              {displayImages.map((item, i) => (
                 <SwiperSlide key={i}>
                   <img src={item} alt="image" className="w-100" />
                 </SwiperSlide>

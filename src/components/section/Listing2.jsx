@@ -7,7 +7,7 @@ import priceStore from "@/store/priceStore";
 import PopularServiceCard2 from "../card/PopularServiceCard2";
 import PopularServiceSlideCard2 from "../card/PopularServiceSlideCard2";
 
-export default function Listing2({ services }) {
+export default function Listing2({ services, CardComponent }) {
   const getDeliveryTime = listingStore((state) => state.getDeliveryTime);
   const getPriceRange = priceStore((state) => state.priceRange);
   const getLevel = listingStore((state) => state.getLevel);
@@ -49,8 +49,8 @@ export default function Listing2({ services }) {
     };
   });
 
-  // Choose data source: dynamic (if any) else fallback mock data
-  const dataSource = normalized.length ? normalized : product1;
+  // Choose data source: use provided data only; if empty, allow empty state UI
+  const dataSource = normalized;
 
   // delivery filter
   const deliveryFilter = (item) =>
@@ -82,25 +82,39 @@ export default function Listing2({ services }) {
         <div className="container">
           <ListingOption1 />
           <div className="row">
-            {dataSource
-              .slice(0, 12)
-              .filter(deliveryFilter)
-              .filter(priceFilter)
-              .filter(levelFilter)
-              .filter(locationFilter)
-              .filter(searchFilter)
-              .filter(sortByFilter)
-              .filter(designToolFilter)
-              .filter(speakFilter)
-              .map((item, i) => (
-                <div key={i} className="col-sm-6">
-                  {item?.gallery?.length > 0 ? (
-                    <PopularServiceSlideCard2 data={item} />
-                  ) : (
-                    <PopularServiceCard2 data={item} />
-                  )}
+            {(() => {
+              const filtered = dataSource
+                .slice(0, 12)
+                .filter(deliveryFilter)
+                .filter(priceFilter)
+                .filter(levelFilter)
+                .filter(locationFilter)
+                .filter(searchFilter)
+                .filter(sortByFilter)
+                .filter(designToolFilter)
+                .filter(speakFilter);
+
+              return filtered.length === 0 ? (
+                <div className="col-12">
+                  <div className="text-center py-5">
+                    <h5 className="mb-2">No services found</h5>
+                    <p className="text-muted mb-0">Try adjusting filters or check back later.</p>
+                  </div>
                 </div>
-              ))}
+              ) : (
+                filtered.map((item, i) => (
+                  <div key={i} className="col-12 col-md-6">
+                    {CardComponent ? (
+                      <CardComponent data={item} />
+                    ) : item?.gallery ? (
+                      <PopularServiceSlideCard2 data={item} />
+                    ) : (
+                      <PopularServiceCard2 data={item} />
+                    )}
+                  </div>
+                ))
+              );
+            })()}
           </div>
           <Pagination1 />
         </div>
