@@ -6,12 +6,11 @@ import "swiper/css/free-mode";
 import { Navigation, Pagination } from "swiper";
 
 import TrendingServiceCard1 from "../card/TrendingServiceCard1";
-import TrendingServiceCardSkeleton from "../card/TrendingServiceCardSkeleton";
 
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 
-export default function TrendingService3({ services, title = "Trending Services", link = "/service-2", linkText = "All Services", isLoading = false }) {
+export default function TrendingService3({ services, title = "Trending Services", link = "/service-2", linkText = "All Services" }) {
   console.log("services in trending", services);
 
   const [showSwiper, setShowSwiper] = useState(false);
@@ -73,34 +72,7 @@ export default function TrendingService3({ services, title = "Trending Services"
 
           <div className="row align-items-center">
             <div className="col-lg-12">
-              {isLoading ? (
-                <Swiper
-                  slidesPerView={4}
-                  spaceBetween={30}
-                  freeMode={true}
-                  className="mySwiper"
-                  breakpoints={{
-                    0: {
-                      slidesPerView: 1,
-                    },
-                    768: {
-                      slidesPerView: 2,
-                    },
-                    992: {
-                      slidesPerView: 3,
-                    },
-                    1200: {
-                      slidesPerView: 4,
-                    },
-                  }}
-                >
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <SwiperSlide key={`skeleton-${i}`}>
-                      <TrendingServiceCardSkeleton />
-                    </SwiperSlide>
-                  ))}
-                </Swiper>
-              ) : showSwiper && count > 0 ? (
+              {showSwiper && count > 0 && (
                 <Swiper
                   slidesPerView={4}
                   spaceBetween={30}
@@ -141,7 +113,7 @@ export default function TrendingService3({ services, title = "Trending Services"
                     </SwiperSlide>
                   ))}
                 </Swiper>
-              ) : null}
+              )}
             </div>
           </div>
 
