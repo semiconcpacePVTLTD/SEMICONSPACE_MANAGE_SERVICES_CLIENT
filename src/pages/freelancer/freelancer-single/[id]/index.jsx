@@ -1,7 +1,10 @@
 import Breadcumb10 from "@/components/breadcumb/Breadcumb10";
+import Breadcumb10Shimmer from "@/components/breadcumb/Breadcumb10Shimmer";
 import Breadcumb17 from "@/components/breadcumb/Breadcumb17";
+import Breadcumb17Shimmer from "@/components/breadcumb/Breadcumb17Shimmer";
 import TabSection1 from "@/components/section/TabSection1";
 import FreelancerDetail1 from "@/components/section/FreelancerDetail1";
+import FreelancerDetail1Shimmer from "@/components/section/FreelancerDetail1Shimmer";
 import MetaComponent from "@/components/common/MetaComponent";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -47,11 +50,15 @@ export default function FreelancerPageSingle11() {
   return (
     <>
       <MetaComponent meta={metadata} />
-      <Breadcumb10 path={["Home", "Services"]} />
       {loading ? (
-        <section className="pt30 pb90"><div className="container"><p>Loading...</p></div></section>
+        <>
+          <Breadcumb10Shimmer />
+          <Breadcumb17Shimmer />
+          <FreelancerDetail1Shimmer />
+        </>
       ) : (
         <>
+          <Breadcumb10 path={["Home", "Services"]} />
           <Breadcumb17 data={data} />
           <FreelancerDetail1 data={data} />
         </>

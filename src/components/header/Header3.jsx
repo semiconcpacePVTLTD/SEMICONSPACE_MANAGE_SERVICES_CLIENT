@@ -6,8 +6,12 @@ import React from "react";
 
 import { useLocation } from "react-router-dom";
 
-export default function Header3() {
+export default function Header3({ services: propServices = [] }) {
   const { pathname } = useLocation();
+
+  // Services state (fetch if not provided via props)
+  const [services, setServices] = React.useState(propServices);
+  const [servicesLoaded, setServicesLoaded] = React.useState(propServices.length > 0);
 
   // Auth state (same behavior as Header19)
   const [showUserMenu, setShowUserMenu] = React.useState(false);
@@ -15,6 +19,30 @@ export default function Header3() {
   const [username, setUsername] = React.useState("");
   const [avatarUrl, setAvatarUrl] = React.useState("/icons/profile.png");
   const closeMenuTimer = React.useRef(null);
+
+  // Fetch services if not provided via props
+  React.useEffect(() => {
+    if (servicesLoaded) return; // Don't fetch if already provided via props
+
+    const fetchServices = async () => {
+      try {
+        const response = await fetch(
+          `http://${import.meta.env.VITE_BACKEND_HOST_ADMIN}:${import.meta.env.VITE_BACKEND_CATALOG_PORT}/catalog-service/listServices`
+        );
+        if (!response.ok) throw new Error("Failed to fetch services");
+        const result = await response.json();
+
+        const allServices = result?.data || [];
+        setServices(allServices);
+        setServicesLoaded(true);
+      } catch (err) {
+        console.error("Error fetching services for Header3:", err);
+        setServicesLoaded(true);
+      }
+    };
+
+    fetchServices();
+  }, [servicesLoaded]);
 
   React.useEffect(() => {
     const computeAuthState = () => {
@@ -110,7 +138,7 @@ export default function Header3() {
               </div>
               <div className="col-auto" style={{ marginRight: "80px" }}>
                 <div className="d-flex align-items-center">
-                  <Navigation />
+                  <Navigation services={services} />
                   {/* <a
                     className="login-info bdrl1 pl15-lg pl30"
                     data-bs-toggle="modal"
