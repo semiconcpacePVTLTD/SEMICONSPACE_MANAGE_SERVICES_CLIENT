@@ -1,48 +1,68 @@
-import Breadcumb16 from "@/components/breadcumb/Breadcumb16";
-import Breadcumb3 from "@/components/breadcumb/Breadcumb3";
-import { useEffect, useState } from "react";
-
-import Listing13 from "@/components/section/Listing13";
+import Breadcumb10 from "@/components/breadcumb/Breadcumb10";
+import Breadcumb10Shimmer from "@/components/breadcumb/Breadcumb10Shimmer";
+import Breadcumb17 from "@/components/breadcumb/Breadcumb17";
+import Breadcumb17Shimmer from "@/components/breadcumb/Breadcumb17Shimmer";
 import TabSection1 from "@/components/section/TabSection1";
-
+import FreelancerDetail1 from "@/components/section/FreelancerDetail1";
+import FreelancerDetail1Shimmer from "@/components/section/FreelancerDetail1Shimmer";
 import MetaComponent from "@/components/common/MetaComponent";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+
 const metadata = {
-  title: "Freeio - Freelance Marketplace ReactJs Template | Freelancer 1",
+  title: "Freeio - Freelance Marketplace ReactJs Template | Freelancer Single",
 };
 
-export default function FreelancerPage1() {
-  const [freelancers, setFreelancers] = useState([]);
-  const [loading, setLoading] = useState(false);
+export default function FreelancerPageSingle11() {
+  const { id } = useParams();
+  const [data, setData] = useState(null); // { profile, profile_details }
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
-    const fetchData = async () => {
+    const fetchDetails = async () => {
       try {
         setLoading(true);
         const host = import.meta.env.VITE_BACKEND_HOST || "192.168.1.30";
-        const port = import.meta.env.VITE_BACKEND_PROFILE_API_PORT || import.meta.env.VITE_BACKEND_PROFILE_PORT || "8003";
-        const url = `http://${host}:${port}/profile-service/freelance`;
-        const res = await fetch(url, { signal: controller.signal });
+        const port = import.meta.env.VITE_BACKEND_PROFILE_PORT || "8002";
+        const url = `http://${host}:${port}/profile-service/getdetails`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: id }),
+          signal: controller.signal,
+        });
         const json = await res.json();
-        setFreelancers(json?.data || []);
+        // Accept either {profile, profile_details} or {data: {profile, profile_details}}
+        setData(json?.data ?? json);
       } catch (e) {
         if (e.name !== "AbortError") {
-          console.error("Failed to load freelancers", e);
+          console.error("Failed to load profile details", e);
         }
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+    fetchDetails();
     return () => controller.abort();
-  }, []);
+  }, [id]);
 
   return (
     <>
       <MetaComponent meta={metadata} />
-      <Breadcumb3 path={["Home", "Freelancer"]} />
-      <Breadcumb16 />
-      <Listing13 freelancers={freelancers} isLoading={loading} />
+      {loading ? (
+        <>
+          <Breadcumb10Shimmer />
+          <Breadcumb17Shimmer />
+          <FreelancerDetail1Shimmer />
+        </>
+      ) : (
+        <>
+          <Breadcumb10 path={["Home", "Services"]} />
+          <Breadcumb17 data={data} />
+          <FreelancerDetail1 data={data} />
+        </>
+      )}
     </>
   );
 }

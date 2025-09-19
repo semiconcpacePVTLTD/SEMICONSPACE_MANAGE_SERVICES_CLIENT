@@ -6,14 +6,43 @@ import React from "react";
 
 import { useLocation } from "react-router-dom";
 
-export default function Header3() {
+export default function Header3({ services: propServices = [] }) {
   const { pathname } = useLocation();
+
+  // Services state (fetch if not provided via props)
+  const [services, setServices] = React.useState(propServices);
+  const [servicesLoaded, setServicesLoaded] = React.useState(propServices.length > 0);
 
   // Auth state (same behavior as Header19)
   const [showUserMenu, setShowUserMenu] = React.useState(false);
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
   const [username, setUsername] = React.useState("");
+  const [avatarUrl, setAvatarUrl] = React.useState("/icons/profile.png");
   const closeMenuTimer = React.useRef(null);
+
+  // Fetch services if not provided via props
+  React.useEffect(() => {
+    if (servicesLoaded) return; // Don't fetch if already provided via props
+
+    const fetchServices = async () => {
+      try {
+        const response = await fetch(
+          `http://${import.meta.env.VITE_BACKEND_HOST_ADMIN}:${import.meta.env.VITE_BACKEND_CATALOG_PORT}/catalog-service/listServices`
+        );
+        if (!response.ok) throw new Error("Failed to fetch services");
+        const result = await response.json();
+
+        const allServices = result?.data || [];
+        setServices(allServices);
+        setServicesLoaded(true);
+      } catch (err) {
+        console.error("Error fetching services for Header3:", err);
+        setServicesLoaded(true);
+      }
+    };
+
+    fetchServices();
+  }, [servicesLoaded]);
 
   React.useEffect(() => {
     const computeAuthState = () => {
@@ -21,16 +50,26 @@ export default function Header3() {
       let auth = null;
       try {
         auth = JSON.parse(localStorage.getItem("auth"));
-      } catch {}
+      } catch { }
 
       const loggedIn = Boolean(token) || Boolean(auth?.success);
       setIsLoggedIn(loggedIn);
 
       if (loggedIn) {
         const name = auth?.data?.name || auth?.user?.name || auth?.name || "User";
+        const avatar =
+          auth?.data?.avatarUrl ||
+          auth?.user?.avatarUrl ||
+          auth?.avatarUrl ||
+          auth?.data?.profileImage ||
+          auth?.user?.profileImage ||
+          auth?.profileImage ||
+          "/icons/profile.png";
         setUsername(name);
+        setAvatarUrl(avatar);
       } else {
         setUsername("");
+        setAvatarUrl("/icons/profile.png");
       }
     };
 
@@ -99,7 +138,7 @@ export default function Header3() {
               </div>
               <div className="col-auto" style={{ marginRight: "80px" }}>
                 <div className="d-flex align-items-center">
-                  <Navigation />
+                  <Navigation services={services} />
                   {/* <a
                     className="login-info bdrl1 pl15-lg pl30"
                     data-bs-toggle="modal"
@@ -121,9 +160,8 @@ export default function Header3() {
                   {!isLoggedIn && (
                     <>
                       <Link
-                        className={`login-info mr15-lg mr30 ${
-                          pathname === "/login" ? "ui-active" : ""
-                        }`}
+                        className={`login-info mr15-lg mr30 ${pathname === "/login" ? "ui-active" : ""
+                          }`}
                         to="/login"
                       >
                         Sign in
@@ -149,18 +187,45 @@ export default function Header3() {
                         aria-haspopup="menu"
                         aria-expanded={showUserMenu}
                       >
-                        <img
-                          src="/icons/profile.png"
-                          alt="author"
-                          className="bdrs50 me-2"
-                          style={{
-                            width: "40px",
-                            height: "40px",
-                            cursor: "pointer",
-                            borderRadius: "50%",
-                            objectFit: "cover",
-                          }}
-                        />
+                        {/* Prefer real avatar if present; else show initial-in-circle (Header19 style) */}
+                        {avatarUrl && avatarUrl !== "/icons/profile.png" ? (
+                          <img
+                            src={avatarUrl}
+                            alt="avatar"
+                            className="bdrs50 me-2"
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              cursor: "pointer",
+                              borderRadius: "50%",
+                              objectFit: "cover",
+                            }}
+                            onError={(e) => {
+                              // Fallback to initial circle by clearing avatarUrl on error
+                              if (e.currentTarget.src !== "/icons/profile.png") {
+                                e.currentTarget.src = "/icons/profile.png";
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="bdrs50 me-2 d-flex align-items-center justify-content-center"
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              cursor: "pointer",
+                              borderRadius: "50%",
+                              objectFit: "cover",
+                              backgroundColor: "#4caf50",
+                              color: "#fff",
+                              fontWeight: "bold",
+                              fontSize: "18px",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {username?.charAt(0) || "U"}
+                          </div>
+                        )}
                         <span>{username}</span>
                       </div>
                       <ul

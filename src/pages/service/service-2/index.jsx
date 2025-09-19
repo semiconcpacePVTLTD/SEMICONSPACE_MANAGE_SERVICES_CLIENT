@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import Breadcumb3 from "@/components/breadcumb/Breadcumb3";
 import Breadcumb4 from "@/components/breadcumb/Breadcumb4";
 import TrendingService7 from "@/components/section/TrendingService7";
+import TrendingService7Shimmer from "@/components/section/TrendingService7Shimmer";
 import TabSection1 from "@/components/section/TabSection1";
 
 import MetaComponent from "@/components/common/MetaComponent";
@@ -19,6 +20,7 @@ export default function ServicePage2() {
   const { services } = location.state || {}; // may be undefined
 
   const [serviceData, setServiceData] = useState(services ?? null);
+  const [loading, setLoading] = useState(!services); // Only load if services not provided
 
   useEffect(() => {
     if (services) return; // already provided via navigation
@@ -28,12 +30,19 @@ export default function ServicePage2() {
 
     async function load() {
       try {
+        setLoading(true);
         const res = await fetch(API_URL, { signal: controller.signal });
         if (!res.ok) throw new Error(`Request failed: ${res.status}`);
         const json = await res.json();
-        if (!ignore) setServiceData(json);
+        if (!ignore) {
+          setServiceData(json);
+          setLoading(false);
+        }
       } catch (err) {
-        if (!ignore) setServiceData({ success: false, message: String(err), data: [] });
+        if (!ignore) {
+          setServiceData({ success: false, message: String(err), data: [] });
+          setLoading(false);
+        }
       }
     }
 
@@ -49,7 +58,11 @@ export default function ServicePage2() {
       <MetaComponent meta={metadata} />
       <Breadcumb3 path={["Home", "Services"]} />
       <Breadcumb4 />
-      <TrendingService7 services={serviceData ?? services ?? []} title="Our Popular Services" link="" />
+      {loading ? (
+        <TrendingService7Shimmer title="Our Popular Services" />
+      ) : (
+        <TrendingService7 services={serviceData ?? services ?? []} title="Our Popular Services" link="" />
+      )}
     </>
   );
 }

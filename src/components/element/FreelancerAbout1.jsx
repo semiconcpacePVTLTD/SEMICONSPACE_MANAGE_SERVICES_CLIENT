@@ -302,16 +302,18 @@ export default function FreelancerAbout1({ data }) {
             </Link>
           </div>
 
-          <div className="d-grid">
-            <button
-              type="button"
-              className="ud-btn btn-thm d-flex align-items-center justify-content-center"
-              onClick={handleOpenModal}
-            >
-              Initiate the project
-              <i className="fal fa-rocket ms-2" style={{ transform: "rotate(0deg)" }} />
-            </button>
-          </div>
+          {getRoleIdsFromStorage().includes(1) && (
+            <div className="d-grid">
+              <button
+                type="button"
+                className="ud-btn btn-thm d-flex align-items-center justify-content-center"
+                onClick={handleOpenModal}
+              >
+                Initiate the project
+                <i className="fal fa-rocket ms-2" style={{ transform: "rotate(0deg)" }} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

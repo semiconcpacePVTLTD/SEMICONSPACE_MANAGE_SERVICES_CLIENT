@@ -1,57 +1,68 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import Breadcumb3 from "@/components/breadcumb/Breadcumb3";
-import Breadcumb8 from "@/components/breadcumb/Breadcumb8";
-
-import ServiceDetails3 from "@/components/section/ServiceDetails3";
+import Breadcumb4 from "@/components/breadcumb/Breadcumb4";
+import TrendingService7 from "@/components/section/TrendingService7";
+import TrendingService7Shimmer from "@/components/section/TrendingService7Shimmer";
 import TabSection1 from "@/components/section/TabSection1";
 
 import MetaComponent from "@/components/common/MetaComponent";
 
-const API_URL = "http://192.168.1.222:9003/catalog-service/getServiceById";
+const API_URL = "http://192.168.1.222:9003/catalog-service/listServices";
 
 const metadata = {
-  title: "Freeio - Freelance Marketplace ReactJs Template | Service Single",
+  title: "Freeio - Freelance Marketplace ReactJs Template | Service 2",
 };
 
-export default function ServicePageSingle11() {
-  const { id } = useParams();
-  const [service, setService] = useState(null);
-  const [loading, setLoading] = useState(true);
+export default function ServicePage2() {
+  const location = useLocation();
+  const { services } = location.state || {}; // may be undefined
+
+  const [serviceData, setServiceData] = useState(services ?? null);
+  const [loading, setLoading] = useState(!services); // Only load if services not provided
 
   useEffect(() => {
+    if (services) return; // already provided via navigation
+
     let ignore = false;
     const controller = new AbortController();
 
     async function load() {
       try {
         setLoading(true);
-        const url = `${API_URL}?id=${encodeURIComponent(id)}`;
-        const res = await fetch(url, { signal: controller.signal });
+        const res = await fetch(API_URL, { signal: controller.signal });
         if (!res.ok) throw new Error(`Request failed: ${res.status}`);
         const json = await res.json();
-        if (!ignore) setService(json?.data ?? null);
-      } catch (e) {
-        if (!ignore) setService(null);
-      } finally {
-        if (!ignore) setLoading(false);
+        if (!ignore) {
+          setServiceData(json);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!ignore) {
+          setServiceData({ success: false, message: String(err), data: [] });
+          setLoading(false);
+        }
       }
     }
 
-    if (id) load();
+    load();
     return () => {
       ignore = true;
       controller.abort();
     };
-  }, [id]);
+  }, [services]);
 
   return (
     <>
       <MetaComponent meta={metadata} />
       <Breadcumb3 path={["Home", "Services"]} />
-      <Breadcumb8 service={service} loading={loading} />
-      <ServiceDetails3 service={service} loading={loading} />
+      <Breadcumb4 />
+      {loading ? (
+        <TrendingService7Shimmer title="Our Popular Services" />
+      ) : (
+        <TrendingService7 services={serviceData ?? services ?? []} title="Our Popular Services" link="" />
+      )}
     </>
   );
 }

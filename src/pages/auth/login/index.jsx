@@ -62,14 +62,27 @@ export default function LoginPage() {
       .then((data) => {
         if (!data?.success) throw new Error(data?.message || "Login failed");
 
-        // Persist in localStorage
+        // Persist in localStorage (normalize avatar field)
         try {
-          localStorage.setItem("auth", JSON.stringify(data));
+          const profileImage =
+            data?.data?.profile_image ||
+            null;
+          console.log("profileImage", profileImage);
+          const normalized = {
+            ...data,
+            data: {
+              ...data.data,
+              // Ensure a consistent avatarUrl key for headers
+              avatarUrl: profileImage || undefined,
+            },
+          };
+
+          localStorage.setItem("auth", JSON.stringify(normalized));
           if (data?.data?.access_token) {
             localStorage.setItem("access_token", data.data.access_token);
             localStorage.setItem("isLoggedIn", "true");
           }
-        } catch (_) {}
+        } catch (_) { }
 
         Swal.fire({
           icon: "success",
