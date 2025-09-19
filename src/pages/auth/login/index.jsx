@@ -65,11 +65,9 @@ export default function LoginPage() {
         // Persist in localStorage (normalize avatar field)
         try {
           const profileImage =
-            data?.data?.avatarUrl ||
-            data?.data?.profileImage ||
-            data?.data?.Profile_image ||
+            data?.data?.profile_image ||
             null;
-
+          console.log("profileImage", profileImage);
           const normalized = {
             ...data,
             data: {

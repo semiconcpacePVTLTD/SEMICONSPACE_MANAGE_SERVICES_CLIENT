@@ -66,12 +66,12 @@ function App() {
   return (
     <div
       className={` ${pathname === "/register" || pathname === "/login"
-          ? "bgc-thm4 mm-wrapper mm-wrapper--position-left-front"
-          : sidebarEnable.includes(pathname)
-            ? isListingActive
-              ? "menu-hidden-sidebar-content"
-              : ""
+        ? "bgc-thm4 mm-wrapper mm-wrapper--position-left-front"
+        : sidebarEnable.includes(pathname)
+          ? isListingActive
+            ? "menu-hidden-sidebar-content"
             : ""
+          : ""
         }`}
     >
       {!footer.includes(pathname) ? (
@@ -140,7 +140,7 @@ function App() {
               !pathname.startsWith("/dashboard") &&
               pathname !== "/service-7" &&
               pathname !== "/invoices" &&
-              pathname !== "/wallet" && <Footer />
+              pathname !== "/wallet" && <Footer18 />
             )}
 
             {/* bottom to top */}
@@ -157,7 +157,7 @@ function App() {
       )}
 
       {/* sidebar mobile navigation */}
-      <NavSidebar />
+      {/* <NavSidebar /> */}
       <ScrollTopBehaviour />
     </div>
   );

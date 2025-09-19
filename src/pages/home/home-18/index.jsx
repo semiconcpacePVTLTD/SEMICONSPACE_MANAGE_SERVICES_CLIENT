@@ -9,6 +9,7 @@ import NeedSomething18 from "@/components/section/NeedSomething18";
 import Testimonials18 from "@/components/section/Testimonials18";
 import TrendingService3 from "@/components/section/TrendingService3";
 import MetaComponent from "@/components/common/MetaComponent";
+import Footer18 from "@/components/footer/Footer18";
 
 const metadata = {
   title: "Freeio - Freelance Marketplace ReactJs Template | Home 18",
@@ -55,6 +56,7 @@ export default function HomePage18() {
         <HighestRated18 />
         <Testimonials18 />
         <ForClient />
+
       </div>
     </>
   );
