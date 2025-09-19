@@ -9,7 +9,8 @@ export default function FreelancerAbout1({ data }) {
   const completedProjects = data?.completed_projects ?? "N/A";
   const hourlyRate = data?.profile_details?.hourly_rate
   const MemberSince = data?.profile_details?.created_at ?? "N/A";
-
+  const img = data?.profile?.profile_image || "/images/team/fl-1.png";
+  console.log("FreelancerAbout1 data:", data);
   return (
     <>
       <div className="price-widget pt25 bdrs8">

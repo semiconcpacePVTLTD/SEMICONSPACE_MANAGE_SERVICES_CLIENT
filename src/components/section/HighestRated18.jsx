@@ -41,7 +41,7 @@ export default function HighestRated18() {
           id: freelancer.uuid || freelancer.id || index + 1,
           name: freelancer.name || freelancer.title || "Unknown Freelancer",
           role: freelancer.company_name || freelancer.profession || "Freelancer",
-          imageSrc: staticImages[index] || "/images/team/home18-team-1.jpg", // Use static images
+          imageSrc: freelancer.profile_image || staticImages[index] || "/images/team/home18-team-1.jpg", // Use profile image from API, fallback to static
           rating: freelancer.rating || 4.9 // Default rating if not provided
         }));
 
@@ -163,9 +163,10 @@ export default function HighestRated18() {
                           <div className="feature-style2 mb30">
                             <div className="feature-img bdrs12">
                               <img
-                                className="bdrs12 w-100"
+                                className="bdrs12"
                                 src={elm.imageSrc}
                                 alt={`${elm.name} avatar`}
+                                style={{ width: '329px', height: '466px', objectFit: 'cover' }}
                               />
                             </div>
                             <div className="feature-content pt15">
@@ -177,6 +178,15 @@ export default function HighestRated18() {
                                 </span>
                               </h5>
                               <p className="text fz15">{elm.role}</p>
+                              <div className="d-grid mt15">
+                                <Link
+                                  to={`/freelancer-single/${elm.id}`}
+                                  className="ud-btn btn-light-thm"
+                                >
+                                  View Profile
+                                  <i className="fal fa-arrow-right-long" />
+                                </Link>
+                              </div>
                             </div>
                           </div>
                         </div>

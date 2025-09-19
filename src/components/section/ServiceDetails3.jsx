@@ -58,7 +58,7 @@ export default function ServiceDetail3({ service, loading }) {
     .map((f, idx) => ({
       id: f?.uuid || f?.id || idx + 1,
       name: f?.name ?? f?.title ?? "Unknown",
-      avatar: f?.avatarUrl || "/images/team/fl-d-1.png",
+      avatar: f?.profile_image || "/images/team/fl-d-1.png",
       location: f?.location ?? "—",
       rate: typeof f?.hourlyRate === "number" ? f.hourlyRate : undefined,
       rating: f?.rating ?? undefined,

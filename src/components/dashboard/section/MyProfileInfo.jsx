@@ -7,13 +7,13 @@ import ProfileDetails from "./ProfileDetails";
 import Skill from "./Skill";
 import WorkExperience from "./WorkExperience";
 
-export default function MyProfileInfo({profile}) {
+export default function MyProfileInfo({ profile }) {
   // Normalize role_id and nested shape safely
   const roleId = Array.isArray(profile?.profile?.role_id)
     ? profile.profile.role_id
     : profile?.profile?.role_id != null
-    ? [profile.profile.role_id]
-    : [];
+      ? [profile.profile.role_id]
+      : [];
   const isCustomer = roleId.includes(1);
   const isFreelancer = roleId.includes(2);
 
@@ -39,16 +39,7 @@ export default function MyProfileInfo({profile}) {
         <div className="row">
           <div className="col-xl-12">
             <ProfileDetails profile={profile.profile} details={profile.profile_details} isCustomer={isCustomer} canEditDetails={!isCustomer && isFreelancer} />
-            {/* {!isCustomer && (
-              <>
-                <Skill details={profile.profile_details} editable={isFreelancer} />
-                <Education details={profile.profile_details} editable={isFreelancer} />
-                <WorkExperience details={profile.profile_details} editable={isFreelancer} />
-                <Award details={profile.profile_details} />
-              </>
-            )} */}
-            {/* <ChangePassword /> */}
-            {/* <ConfirmPassword /> */}
+
           </div>
         </div>
       </div>
