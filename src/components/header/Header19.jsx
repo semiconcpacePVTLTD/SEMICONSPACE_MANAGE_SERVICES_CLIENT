@@ -18,7 +18,7 @@ export default function Header19({ service, services }) {
       let auth = null;
       try {
         auth = JSON.parse(localStorage.getItem("auth"));
-      } catch {}
+      } catch { }
 
       const loggedIn = Boolean(token) || Boolean(auth?.success);
       setIsLoggedIn(loggedIn);
@@ -123,96 +123,96 @@ export default function Header19({ service, services }) {
                     </>
                   )}
 
-              {/* If logged in */}
-{isLoggedIn && (
-  <div
-    className="ms-3 position-relative author-dropdown"
-    onMouseEnter={openUserMenu}
-    onMouseLeave={scheduleCloseUserMenu}
-    style={{ position: "relative" }}
-  >
-    <div
-      className="author-logo d-flex align-items-center"
-      onClick={toggleUserMenu}
-      role="button"
-      aria-haspopup="menu"
-      aria-expanded={showUserMenu}
-    >
-      {/* Show first letter of username in a circle */}
-      <div
-        className="bdrs50 me-2 d-flex align-items-center justify-content-center"
-        style={{
-          width: "40px",
-          height: "40px",
-          cursor: "pointer",
-          borderRadius: "50%",
-          objectFit: "cover",
-          backgroundColor: "#4caf50", // fallback color
-          color: "#fff",
-          fontWeight: "bold",
-          fontSize: "18px",
-          textTransform: "uppercase",
-        }}
-      >
-        {username?.charAt(0) || "U"}
-      </div>
+                  {/* If logged in */}
+                  {isLoggedIn && (
+                    <div
+                      className="ms-3 position-relative author-dropdown"
+                      onMouseEnter={openUserMenu}
+                      onMouseLeave={scheduleCloseUserMenu}
+                      style={{ position: "relative" }}
+                    >
+                      <div
+                        className="author-logo d-flex align-items-center"
+                        onClick={toggleUserMenu}
+                        role="button"
+                        aria-haspopup="menu"
+                        aria-expanded={showUserMenu}
+                      >
+                        {/* Show first letter of username in a circle */}
+                        <div
+                          className="bdrs50 me-2 d-flex align-items-center justify-content-center"
+                          style={{
+                            width: "40px",
+                            height: "40px",
+                            cursor: "pointer",
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                            backgroundColor: "#4caf50", // fallback color
+                            color: "#fff",
+                            fontWeight: "bold",
+                            fontSize: "18px",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {username?.charAt(0) || "U"}
+                        </div>
 
-      <span>{username}</span>
-    </div>
+                        <span style={{ color: sticky ? "var(--headings-color)" : "#fff" }}>{username}</span>
+                      </div>
 
-    <ul
-      className="dropdown-menu shadow-sm"
-      style={{
-        display: showUserMenu ? "block" : "none",
-        position: "absolute",
-        right: 0,
-        top: "48px",
-        minWidth: "160px",
-        background: "#fff",
-        border: "1px solid rgba(0,0,0,0.08)",
-        borderRadius: "8px",
-        padding: "8px 0",
-        zIndex: 1000,
-        listStyle: "none",
-      }}
-    >
-      <li>
-        <Link
-          to="/dashboard/my-profile"
-          onClick={() => setShowUserMenu(false)}
-          className="dropdown-item"
-          style={{
-            padding: "8px 16px",
-            display: "block",
-            color: "inherit",
-            textDecoration: "none",
-          }}
-        >
-          My Account
-        </Link>
-      </li>
-      <li>
-        <button
-          onClick={handleLogout}
-          className="dropdown-item"
-          style={{
-            padding: "8px 16px",
-            display: "block",
-            color: "inherit",
-            textDecoration: "none",
-            background: "none",
-            border: "none",
-            width: "100%",
-            textAlign: "left",
-          }}
-        >
-          <i className="fa-solid fa-right-from-bracket me-2" />
-          Logout
-        </button>
-      </li>
-    </ul>
-  </div>
-)}
+                      <ul
+                        className="dropdown-menu shadow-sm"
+                        style={{
+                          display: showUserMenu ? "block" : "none",
+                          position: "absolute",
+                          right: 0,
+                          top: "48px",
+                          minWidth: "160px",
+                          background: "#fff",
+                          border: "1px solid rgba(0,0,0,0.08)",
+                          borderRadius: "8px",
+                          padding: "8px 0",
+                          zIndex: 1000,
+                          listStyle: "none",
+                        }}
+                      >
+                        <li>
+                          <Link
+                            to="/dashboard/my-profile"
+                            onClick={() => setShowUserMenu(false)}
+                            className="dropdown-item"
+                            style={{
+                              padding: "8px 16px",
+                              display: "block",
+                              color: "inherit",
+                              textDecoration: "none",
+                            }}
+                          >
+                            My Account
+                          </Link>
+                        </li>
+                        <li>
+                          <button
+                            onClick={handleLogout}
+                            className="dropdown-item"
+                            style={{
+                              padding: "8px 16px",
+                              display: "block",
+                              color: "inherit",
+                              textDecoration: "none",
+                              background: "none",
+                              border: "none",
+                              width: "100%",
+                              textAlign: "left",
+                            }}
+                          >
+                            <i className="fa-solid fa-right-from-bracket me-2" />
+                            Logout
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                  )}
 
                 </div>
               </div>

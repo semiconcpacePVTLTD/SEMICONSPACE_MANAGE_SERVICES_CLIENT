@@ -42,11 +42,7 @@ export default function FreelancerPage1() {
       <MetaComponent meta={metadata} />
       <Breadcumb3 path={["Home", "Freelancer"]} />
       <Breadcumb16 />
-      {loading ? (
-        <section className="pt30 pb90"><div className="container"><p>Loading...</p></div></section>
-      ) : (
-        <Listing13 freelancers={freelancers} />
-      )}
+      <Listing13 freelancers={freelancers} isLoading={loading} />
     </>
   );
 }

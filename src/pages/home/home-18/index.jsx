@@ -51,7 +51,7 @@ export default function HomePage18() {
         <BrowserCategory3 />
         <TrendingService3 services={services} />
         <NeedSomething18 />
-        <CounterInfo1 />
+        {/* <CounterInfo1 /> */}
         <HighestRated18 />
         <Testimonials18 />
         <ForClient />

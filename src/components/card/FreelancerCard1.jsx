@@ -4,12 +4,12 @@ export default function FreelancerCard1({ data }) {
   const tags = Array.isArray(data.tags) ? data.tags.slice(0, 3) : [];
   const location = data.location || "";
   const jobSuccess = typeof data.jobSuccess === "number" ? data.jobSuccess : undefined;
-
+  console.log("FreelancerCard1 data:", data);
   return (
     <>
       <div className="freelancer-style1 text-center bdr1 hover-box-shadow">
         <div className="thumb w90 mb25 mx-auto position-relative rounded-circle">
-          <img className="rounded-circle mx-auto" src={data.img} alt="thumb" />
+          <img className="rounded-circle mx-auto" src={data.profile_image || data.img} alt="thumb" style={{ width: '90px', height: '90px', objectFit: 'cover' }} />
           <span className="online" />
         </div>
         <div className="details">

@@ -57,7 +57,7 @@ export default function Listing13({ freelancers = [], isLoading = false, skeleto
 
   const normalized = sourceArr.map((f, idx) => ({
     id: f.uuid || f.id || idx + 1,
-    img: "/images/team/fl-1.png", // keep existing design avatar
+    img: f?.profile_image || "/images/team/fl-1.png", // use profile image from API, fallback to static
     name: f?.name ?? f?.title ?? undefined,
     profession: f?.company_name ?? f?.profession ?? undefined,
     rating: f?.rating ?? undefined,
@@ -120,7 +120,6 @@ export default function Listing13({ freelancers = [], isLoading = false, skeleto
     <>
       <section className="pt30 pb90">
         <div className="container">
-          <ListingOption6 freelancers={normalized} />
           <div className="row">
             {isLoading
               ? Array.from({ length: skeletonCount }).map((_, i) => (

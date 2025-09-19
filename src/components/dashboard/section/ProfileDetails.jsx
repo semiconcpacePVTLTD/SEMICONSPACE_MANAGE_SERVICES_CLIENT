@@ -7,7 +7,7 @@ import Swal from "sweetalert2";
 
 export default function ProfileDetails({ profile, details, isCustomer, canEditDetails }) {
 
-  console.log("[ProfileDetails] profile prop:", profile, "isCustomer:", isCustomer ,"details:", details);
+  console.log("[ProfileDetails] profile prop:", profile, "isCustomer:", isCustomer, "details:", details);
   // Local editable copy of details (sourced only from props)
   const [profile_details, setProfileDetails] = useState(details || {});
   const detailsInitialRef = useRef(null);
@@ -60,9 +60,9 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
   };
 
   // Common uploader for profile-service
-  const uploadToProfileService = async (file, dirtry) => {
+  const uploadToProfileService = async (file, dirtry, user_id) => {
     const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
-    const url = `${BASE_URL}/profile-service/upload?dirtry=${encodeURIComponent(dirtry)}`;
+    const url = `${BASE_URL}/profile-service/upload?dirtry=${encodeURIComponent(dirtry)}&user_id=${encodeURIComponent(user_id)}`;
     const formData = new FormData();
     // Backend expects generic file field; adjust if server uses a specific key
     formData.append("file", file);
@@ -95,7 +95,7 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
       }
       setPageLoading(true);
       // Upload only. Do not call updateuser; success is determined by upload response
-      const uploadedUrl = await uploadToProfileService(selectedImageFile, "Manage_Service_Profile_IMG");
+      const uploadedUrl = await uploadToProfileService(selectedImageFile, "Manage_Service_Profile_IMG", form.user_id);
 
       // Reflect uploaded URL locally and notify user
       setForm((s) => ({ ...s, profile_image: uploadedUrl }));
@@ -213,8 +213,8 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
     const initialDetails = detailsInitialRef.current || {};
     const curr = profile_details || {};
     const keys = [
-      "pan_number","pan_verified","mcs_incorporation_no","mcs_incorporation_image",
-      "mcs_verified","gstin_number","gstin_verified","verified","remarks"
+      "pan_number", "pan_verified", "mcs_incorporation_no", "mcs_incorporation_image",
+      "mcs_verified", "gstin_number", "gstin_verified", "verified", "remarks"
     ];
     const changed = keys.some((k) => JSON.stringify(curr?.[k] ?? null) !== JSON.stringify(initialDetails?.[k] ?? null));
     return changed || !!mcsDocFile;
@@ -225,61 +225,61 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
   const isMcaReadOnly = !!profile_details?.mcs_verified;
   const isGstinReadOnly = !!profile_details?.gstin_verified;
 
-const handleCompanyVerificationSubmit = async () => {
-  try {
-    setPageLoading(true);
-    const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
+  const handleCompanyVerificationSubmit = async () => {
+    try {
+      setPageLoading(true);
+      const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
 
-    const verificationDetails = {
-      user_id: form.user_id, // 👈 directly pass user_id here
-      pan_number: profile_details?.pan_number || "",
-      mcs_incorporation_no: profile_details?.mcs_incorporation_no || "",
-      gstin_number: profile_details?.gstin_number || "",
-    };
-
-    const config = { headers: { "Content-Type": "application/json" } };
-    const url = `${BASE_URL}/profile-service/verification/request`;
-    const res = await axios.post(url, verificationDetails, config); // 👈 send flat object
-
-    const ok = res?.data?.success ?? true;
-    if (ok) {
-      Swal.fire({
-        icon: "success",
-        title: "Company verification updated",
-        text: res?.data?.message || "Details saved."
-      });
-
-      detailsInitialRef.current = {
-        ...(detailsInitialRef.current || {}),
-        ...verificationDetails,
+      const verificationDetails = {
+        user_id: form.user_id, // 👈 directly pass user_id here
+        pan_number: profile_details?.pan_number || "",
+        mcs_incorporation_no: profile_details?.mcs_incorporation_no || "",
+        gstin_number: profile_details?.gstin_number || "",
       };
-      setMcsDocFile(null);
-    } else {
-      Swal.fire({
-        icon: "error",
-        title: "Update failed",
-        text: res?.data?.message || "Please try again."
-      });
-    }
-  } catch (err) {
-    console.error("[ProfileDetails] company verification update error", err);
-    const status = err?.response?.status;
-    const isNetwork =
-      err?.message?.includes("Network Error") ||
-      err?.code === "ECONNABORTED" ||
-      (err?.request && !err?.response);
 
-    if (status === 500) {
-      Swal.fire({ icon: "error", title: "Internal server error", text: "Please try again later." });
-    } else if (isNetwork) {
-      Swal.fire({ icon: "error", title: "Couldn't reach server", text: "Please check your connection or try again later." });
-    } else {
-      Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || err.message || "Something went wrong." });
+      const config = { headers: { "Content-Type": "application/json" } };
+      const url = `${BASE_URL}/profile-service/verification/request`;
+      const res = await axios.post(url, verificationDetails, config); // 👈 send flat object
+
+      const ok = res?.data?.success ?? true;
+      if (ok) {
+        Swal.fire({
+          icon: "success",
+          title: "Company verification updated",
+          text: res?.data?.message || "Details saved."
+        });
+
+        detailsInitialRef.current = {
+          ...(detailsInitialRef.current || {}),
+          ...verificationDetails,
+        };
+        setMcsDocFile(null);
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Update failed",
+          text: res?.data?.message || "Please try again."
+        });
+      }
+    } catch (err) {
+      console.error("[ProfileDetails] company verification update error", err);
+      const status = err?.response?.status;
+      const isNetwork =
+        err?.message?.includes("Network Error") ||
+        err?.code === "ECONNABORTED" ||
+        (err?.request && !err?.response);
+
+      if (status === 500) {
+        Swal.fire({ icon: "error", title: "Internal server error", text: "Please try again later." });
+      } else if (isNetwork) {
+        Swal.fire({ icon: "error", title: "Couldn't reach server", text: "Please check your connection or try again later." });
+      } else {
+        Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || err.message || "Something went wrong." });
+      }
+    } finally {
+      setPageLoading(false);
     }
-  } finally {
-    setPageLoading(false);
-  }
-};
+  };
 
 
   const handleSave = async (e) => {
@@ -309,8 +309,8 @@ const handleCompanyVerificationSubmit = async () => {
         const filterArr = (arr) =>
           Array.isArray(arr)
             ? arr
-                .map((s) => (typeof s === "string" ? s.trim() : s))
-                .filter((v) => (typeof v === "string" ? v.length > 0 : Boolean(v)))
+              .map((s) => (typeof s === "string" ? s.trim() : s))
+              .filter((v) => (typeof v === "string" ? v.length > 0 : Boolean(v)))
             : [];
 
         // Normalize hourly_rate to a 2-decimal string or null
@@ -328,14 +328,14 @@ const handleCompanyVerificationSubmit = async () => {
         // Convert fixed_price_projects array [{domain, price}] -> object map { [domain]: "price" }
         const projectsMap = Array.isArray(rest.fixed_price_projects)
           ? rest.fixed_price_projects.reduce((acc, p) => {
-              const domain = typeof p?.domain === "string" ? p.domain.trim() : "";
-              const priceStr = toPriceString(p?.price);
-              if (domain && priceStr) acc[domain] = priceStr;
-              return acc;
-            }, {})
+            const domain = typeof p?.domain === "string" ? p.domain.trim() : "";
+            const priceStr = toPriceString(p?.price);
+            if (domain && priceStr) acc[domain] = priceStr;
+            return acc;
+          }, {})
           : (rest.fixed_price_projects && typeof rest.fixed_price_projects === "object"
-              ? rest.fixed_price_projects
-              : {});
+            ? rest.fixed_price_projects
+            : {});
 
         return {
           ...rest,
@@ -492,7 +492,7 @@ const handleCompanyVerificationSubmit = async () => {
                   Upload Image
                 </button>
               </div>
-            
+
             </div>
           </div>
         </div>
@@ -503,57 +503,57 @@ const handleCompanyVerificationSubmit = async () => {
               {isCustomer ? (
                 <>
                   {/* Name */}
-              <div className="col-sm-6">
-  <div className="mb20">
-    <label className="heading-color ff-heading fw500 mb10">Username</label>
-    <input
-      type="text"
-      className="form-control"
-      placeholder="Username"
-      value={form.name}
-      maxLength={15} // ✅ Limit length
-      onChange={(e) => {
-        const value = e.target.value;
-        // ✅ Allow only letters & numbers
-        const cleanedValue = value.replace(/[^a-zA-Z0-9]/g, "");
-        setForm((s) => ({ ...s, name: cleanedValue }));
-      }}
-    />
-  </div>
-</div>
+                  <div className="col-sm-6">
+                    <div className="mb20">
+                      <label className="heading-color ff-heading fw500 mb10">Username</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Username"
+                        value={form.name}
+                        maxLength={15} // ✅ Limit length
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // ✅ Allow only letters & numbers
+                          const cleanedValue = value.replace(/[^a-zA-Z0-9]/g, "");
+                          setForm((s) => ({ ...s, name: cleanedValue }));
+                        }}
+                      />
+                    </div>
+                  </div>
 
                   {/* Email */}
                   <div className="col-sm-6">
                     <div className="mb20">
                       <label className="heading-color ff-heading fw500 mb10">Email Address</label>
                       <input
-                        type="email"                        className="form-control"
+                        type="email" className="form-control"
                         placeholder="Email"
                         value={form.email}
-                        readOnly 
+                        readOnly
                         onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
                       />
                     </div>
                   </div>
-             {/* Phone */}
-<div className="col-sm-6">
-  <div className="mb20">
-    <label className="heading-color ff-heading fw500 mb10">Phone Number</label>
-    <input
-      type="text"
-      className="form-control"
-      placeholder="Phone Number"
-      value={form.phone}
-      maxLength={10} // ✅ restricts to 10 characters
-      onChange={(e) => {
-        const value = e.target.value;
-        // ✅ allow only digits
-        const cleanedValue = value.replace(/[^0-9]/g, "");
-        setForm((s) => ({ ...s, phone: cleanedValue }));
-      }}
-    />
-  </div>
-</div>
+                  {/* Phone */}
+                  <div className="col-sm-6">
+                    <div className="mb20">
+                      <label className="heading-color ff-heading fw500 mb10">Phone Number</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Phone Number"
+                        value={form.phone}
+                        maxLength={10} // ✅ restricts to 10 characters
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // ✅ allow only digits
+                          const cleanedValue = value.replace(/[^0-9]/g, "");
+                          setForm((s) => ({ ...s, phone: cleanedValue }));
+                        }}
+                      />
+                    </div>
+                  </div>
 
                   {/* Bio */}
                   <div className="col-sm-6">
@@ -584,103 +584,103 @@ const handleCompanyVerificationSubmit = async () => {
                   </div> */}
 
                   {/* Password */}
-<div className="col-sm-6">
-  <div className="mb20">
-    <label className="heading-color ff-heading fw500 mb10">Password</label>
-    <div className="input-group">
-      <input
-        type={showPassword ? "text" : "password"}
-        className="form-control"
-        placeholder="Password"
-        value={form.password}
-        maxLength={15}
-        onChange={(e) => {
-          const value = e.target.value;
-          if (value.length <= 15) {
-            setForm((s) => ({ ...s, password: value }));
-          }
-        }}
-      />
-      <button
-        type="button"
-        className="btn btn-outline-secondary"
-        onClick={() => setShowPassword((v) => !v)}
-        aria-label={showPassword ? "Hide password" : "Show password"}
-      >
-        <span className={showPassword ? "fa fa-eye-slash" : "fa fa-eye"} />
-      </button>
-    </div>
-    {/* Validation message */}
-    {form.password && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,15}$/.test(form.password) && (
-      <p className="text-danger mt-1" style={{ fontSize: "0.9rem" }}>
-        Password must be 8–15 chars, include 1 uppercase, 1 lowercase, and 1 special character.
-      </p>
-    )}
-  </div>
-</div>
-{/* Save button */}
-<div className="col-md-12">
-  <div className="text-start">
-    <button
-      type="submit"
-      disabled={!hasChanges}
-      className={`ud-btn ${hasChanges ? "btn-thm" : "btn-secondary"} `}
-      style={{
-        cursor: hasChanges ? "pointer" : "not-allowed",
-        opacity: hasChanges ? 1 : 0.6, // greyed-out effect
-      }}
-    >
-      Save Changes
-      <i className="fal fa-arrow-right-long" />
-    </button>
-  </div>
-</div>
+                  <div className="col-sm-6">
+                    <div className="mb20">
+                      <label className="heading-color ff-heading fw500 mb10">Password</label>
+                      <div className="input-group">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          className="form-control"
+                          placeholder="Password"
+                          value={form.password}
+                          maxLength={15}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value.length <= 15) {
+                              setForm((s) => ({ ...s, password: value }));
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary"
+                          onClick={() => setShowPassword((v) => !v)}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                          <span className={showPassword ? "fa fa-eye-slash" : "fa fa-eye"} />
+                        </button>
+                      </div>
+                      {/* Validation message */}
+                      {form.password && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,15}$/.test(form.password) && (
+                        <p className="text-danger mt-1" style={{ fontSize: "0.9rem" }}>
+                          Password must be 8–15 chars, include 1 uppercase, 1 lowercase, and 1 special character.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {/* Save button */}
+                  <div className="col-md-12">
+                    <div className="text-start">
+                      <button
+                        type="submit"
+                        disabled={!hasChanges}
+                        className={`ud-btn ${hasChanges ? "btn-thm" : "btn-secondary"} `}
+                        style={{
+                          cursor: hasChanges ? "pointer" : "not-allowed",
+                          opacity: hasChanges ? 1 : 0.6, // greyed-out effect
+                        }}
+                      >
+                        Save Changes
+                        <i className="fal fa-arrow-right-long" />
+                      </button>
+                    </div>
+                  </div>
 
                 </>
               ) : (
-            <>
-  {/* Basic Profile Info */}
-  <div className="col-sm-6">
-    <div className="mb20">
-      <label className="heading-color ff-heading fw500 mb10">Username</label>
-      <input
-        type="text"
-        className="form-control"
-        placeholder="Username"
-        value={form.name}
-        maxLength={15}
-        onChange={(e) => {
-          const value = e.target.value;
-          const cleanedValue = value.replace(/[^a-zA-Z0-9]/g, "");
-          setForm((s) => ({ ...s, name: cleanedValue }));
-        }}
-      />
-    </div>
-  </div>
-  <div className="col-sm-6">
-    <div className="mb20">
-      <label className="heading-color ff-heading fw500 mb10">Email Address</label>
-      <input type="email" className="form-control" value={form.email} readOnly />
-    </div>
-  </div>
-  <div className="col-sm-6">
-    <div className="mb20">
-      <label className="heading-color ff-heading fw500 mb10">Phone Number</label>
-      <input
-        type="text"
-        className="form-control"
-        placeholder="Phone Number"
-        value={form.phone}
-        maxLength={10}
-        onChange={(e) => {
-          const value = e.target.value;
-          const cleanedValue = value.replace(/[^0-9]/g, "");
-          setForm((s) => ({ ...s, phone: cleanedValue }));
-        }}
-      />
-    </div>
-  </div>
-  {/* <div className="col-sm-6">
+                <>
+                  {/* Basic Profile Info */}
+                  <div className="col-sm-6">
+                    <div className="mb20">
+                      <label className="heading-color ff-heading fw500 mb10">Username</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Username"
+                        value={form.name}
+                        maxLength={15}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const cleanedValue = value.replace(/[^a-zA-Z0-9]/g, "");
+                          setForm((s) => ({ ...s, name: cleanedValue }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-sm-6">
+                    <div className="mb20">
+                      <label className="heading-color ff-heading fw500 mb10">Email Address</label>
+                      <input type="email" className="form-control" value={form.email} readOnly />
+                    </div>
+                  </div>
+                  <div className="col-sm-6">
+                    <div className="mb20">
+                      <label className="heading-color ff-heading fw500 mb10">Phone Number</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Phone Number"
+                        value={form.phone}
+                        maxLength={10}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const cleanedValue = value.replace(/[^0-9]/g, "");
+                          setForm((s) => ({ ...s, phone: cleanedValue }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {/* <div className="col-sm-6">
     <div className="mb20">
       <label className="heading-color ff-heading fw500 mb10">Role</label>
       <input type="text" className="form-control" value={profile?.role?.join(", ") || ""} readOnly />
@@ -693,325 +693,325 @@ const handleCompanyVerificationSubmit = async () => {
     </div>
   </div> */}
 
-  {/* Company Name (for enterprise) */}
-  <div className="col-sm-6">
-    <div className="mb20">
-      <label className="heading-color ff-heading fw500 mb10">Company Name</label>
-      <input
-        type="text"
-        className="form-control"
-        placeholder="Company Name"
-        value={form.company_name}
-        onChange={(e) => setForm((s) => ({ ...s, company_name: e.target.value }))}
-      />
-    </div>
-  </div>
+                  {/* Company Name (for enterprise) */}
+                  <div className="col-sm-6">
+                    <div className="mb20">
+                      <label className="heading-color ff-heading fw500 mb10">Company Name</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Company Name"
+                        value={form.company_name}
+                        onChange={(e) => setForm((s) => ({ ...s, company_name: e.target.value }))}
+                      />
+                    </div>
+                  </div>
 
-  {/* Location (editable for all roles) */}
-  <div className="col-sm-6">
-    <div className="mb20">
-      <label className="heading-color ff-heading fw500 mb10">Location</label>
-      <input
-        type="text"
-        className="form-control"
-        placeholder="Location"
-        value={form.location}
-        onChange={(e) => setForm((s) => ({ ...s, location: e.target.value }))}
-      />
-    </div>
-  </div>
+                  {/* Location (editable for all roles) */}
+                  <div className="col-sm-6">
+                    <div className="mb20">
+                      <label className="heading-color ff-heading fw500 mb10">Location</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Location"
+                        value={form.location}
+                        onChange={(e) => setForm((s) => ({ ...s, location: e.target.value }))}
+                      />
+                    </div>
+                  </div>
 
-  {/* Password (editable) */}
-  <div className="col-sm-6">
-    <div className="mb20">
-      <label className="heading-color ff-heading fw500 mb10">Password</label>
-      <div className="input-group">
-        <input
-          type={showPassword ? "text" : "password"}
-          className="form-control"
-          placeholder="Password"
-          value={form.password}
-          maxLength={15}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (value.length <= 15) {
-              setForm((s) => ({ ...s, password: value }));
-            }
-          }}
-        />
-        <button
-          type="button"
-          className="btn btn-outline-secondary"
-          onClick={() => setShowPassword((v) => !v)}
-          aria-label={showPassword ? "Hide password" : "Show password"}
-        >
-          <span className={showPassword ? "fa fa-eye-slash" : "fa fa-eye"} />
-        </button>
-      </div>
-      {form.password && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,15}$/.test(form.password) && (
-        <p className="text-danger mt-1" style={{ fontSize: "0.9rem" }}>
-          Password must be 8–15 chars, include 1 uppercase, 1 lowercase, and 1 special character.
-        </p>
-      )}
-    </div>
-  </div>
-
-  {/* Profile Details (from profile_details) */}
-  {profile_details && (
-    <>
-   
-
-      {/* Hourly Rate (editable, decimal only) */}
-      <div className="col-sm-6">
-        <div className="mb20">
-          <label className="heading-color ff-heading fw500 mb10">Hourly Rate</label>
-          <input
-            type="text"
-            className="form-control"
-            placeholder="e.g. 25.5"
-            value={profile_details?.hourly_rate ?? ""}
-            onChange={(e) => {
-              const value = e.target.value;
-              const cleaned = value
-                .replace(/[^0-9.]/g, "") // keep digits and dot
-                .replace(/(\..*)\./g, "$1"); // single dot
-              setProfileDetails((s) => ({ ...s, hourly_rate: cleaned }));
-            }}
-          />
-        </div>
-      </div>
-
-{/* Skills table */}
-<div className="col-md-12">
-  <div className="mb20">
-    <div className="d-flex justify-content-between align-items-center mb10">
-      <label className="heading-color ff-heading fw500 mb0">Skills</label>
-      <button
-        type="button"
-        className="ud-btn btn-thm"
-        onClick={() => {
-          const next = Array.isArray(profile_details?.skills) ? [...profile_details.skills] : [];
-          next.push("");
-          setProfileDetails((s) => ({ ...s, skills: next }));
-        }}
-      >
-        + Add Skill
-      </button>
-    </div>
-
-    <table className="table table-bordered">
-      <thead>
-        <tr>
-          <th>Skill</th>
-          <th style={{ width: 80 }}>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {(profile_details?.skills ?? []).map((skill, idx) => (
-          <tr key={idx}>
-            <td>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Skill"
-                value={skill}
-                onChange={(e) => {
-                  const next = [...(profile_details?.skills ?? [])];
-                  next[idx] = e.target.value;
-                  setProfileDetails((s) => ({ ...s, skills: next }));
-                }}
-              />
-            </td>
-            <td className="text-center">
-              <span
-                className="flaticon-delete text-thm2"
-                style={{ cursor: "pointer" }}
-                title="Remove skill"
-                onClick={() => {
-                  const next = [...(profile_details?.skills ?? [])];
-                  next.splice(idx, 1);
-                  setProfileDetails((s) => ({ ...s, skills: next }));
-                }}
-              />
-            </td>
-          </tr>
-        ))}
-        {(!profile_details?.skills || profile_details.skills.length === 0) && (
-          <tr>
-            <td colSpan={2} className="text-center text-muted">No skills added</td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-{/* Services table */}
-<div className="col-md-12">
-  <div className="mb20">
-    <div className="d-flex justify-content-between align-items-center mb10">
-      <label className="heading-color ff-heading fw500 mb0">Services</label>
-      <button
-        type="button"
-        className="ud-btn btn-thm"
-        onClick={() => {
-          const next = Array.isArray(profile_details?.services_list)
-            ? [...profile_details.services_list]
-            : [];
-          next.push("");
-          setProfileDetails((s) => ({ ...s, services_list: next }));
-        }}
-      >
-        + Add Service
-      </button>
-    </div>
-
-    <table className="table table-bordered">
-      <thead>
-        <tr>
-          <th>Service</th>
-          <th style={{ width: 80 }}>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {(profile_details?.services_list ?? []).map((service, idx) => (
-          <tr key={idx}>
-            <td>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Service"
-                value={service}
-                onChange={(e) => {
-                  const next = [...(profile_details?.services_list ?? [])];
-                  next[idx] = e.target.value;
-                  setProfileDetails((s) => ({ ...s, services_list: next }));
-                }}
-              />
-            </td>
-            <td className="text-center">
-              <span
-                className="flaticon-delete text-thm2"
-                style={{ cursor: "pointer" }}
-                title="Remove service"
-                onClick={() => {
-                  const next = [...(profile_details?.services_list ?? [])];
-                  next.splice(idx, 1);
-                  setProfileDetails((s) => ({ ...s, services_list: next }));
-                }}
-              />
-            </td>
-          </tr>
-        ))}
-        {(!profile_details?.services_list || profile_details.services_list.length === 0) && (
-          <tr>
-            <td colSpan={2} className="text-center text-muted">No services added</td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-
-
-
-      {/* Fixed Price Projects (table like Services) */}
-      {(() => {
-        // Normalize to an editable array even if backend returns an object map
-        const raw = profile_details?.fixed_price_projects;
-        const projectsArray = Array.isArray(raw)
-          ? raw
-          : raw && typeof raw === 'object'
-            ? Object.entries(raw).map(([domain, price]) => ({ domain, price }))
-            : [];
-
-        const setFromArray = (arr) => setProfileDetails((s) => ({ ...s, fixed_price_projects: arr }));
-
-        return (
-          <div className="col-md-12">
-            <div className="mb20">
-              <div className="d-flex justify-content-between align-items-center mb10">
-                <label className="heading-color ff-heading fw500 mb0">Fixed Price Projects</label>
-                <button
-                  type="button"
-                  className="ud-btn btn-thm"
-                  onClick={() => {
-                    const next = [...projectsArray];
-                    next.push({ domain: "", price: "" });
-                    setFromArray(next);
-                  }}
-                >
-                  + Add Fixed Price Project
-                </button>
-              </div>
-
-              <table className="table table-bordered">
-                <thead>
-                  <tr>
-                    <th>Domain</th>
-                    <th>Price</th>
-                    <th style={{ width: 80 }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {projectsArray.map((p, idx) => (
-                    <tr key={idx}>
-                      <td>
+                  {/* Password (editable) */}
+                  <div className="col-sm-6">
+                    <div className="mb20">
+                      <label className="heading-color ff-heading fw500 mb10">Password</label>
+                      <div className="input-group">
                         <input
-                          type="text"
+                          type={showPassword ? "text" : "password"}
                           className="form-control"
-                          placeholder="e.g. Website"
-                          value={p?.domain || ""}
+                          placeholder="Password"
+                          value={form.password}
+                          maxLength={15}
                           onChange={(e) => {
-                            const next = [...projectsArray];
-                            next[idx] = { ...(next[idx] || {}), domain: e.target.value };
-                            setFromArray(next);
+                            const value = e.target.value;
+                            if (value.length <= 15) {
+                              setForm((s) => ({ ...s, password: value }));
+                            }
                           }}
                         />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="e.g. 500"
-                          value={p?.price || ""}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                            const next = [...projectsArray];
-                            next[idx] = { ...(next[idx] || {}), price: val };
-                            setFromArray(next);
-                          }}
-                        />
-                      </td>
-                      <td className="text-center">
-                        <span
-                          className="flaticon-delete text-thm2"
-                          style={{ cursor: "pointer" }}
-                          title="Remove project"
-                          onClick={() => {
-                            const next = [...projectsArray];
-                            next.splice(idx, 1);
-                            setFromArray(next);
-                          }}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                  {projectsArray.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="text-center text-muted">No projects added</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      })()}
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary"
+                          onClick={() => setShowPassword((v) => !v)}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                          <span className={showPassword ? "fa fa-eye-slash" : "fa fa-eye"} />
+                        </button>
+                      </div>
+                      {form.password && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,15}$/.test(form.password) && (
+                        <p className="text-danger mt-1" style={{ fontSize: "0.9rem" }}>
+                          Password must be 8–15 chars, include 1 uppercase, 1 lowercase, and 1 special character.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Profile Details (from profile_details) */}
+                  {profile_details && (
+                    <>
 
 
-      {/* Availability
+                      {/* Hourly Rate (editable, decimal only) */}
+                      <div className="col-sm-6">
+                        <div className="mb20">
+                          <label className="heading-color ff-heading fw500 mb10">Hourly Rate</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="e.g. 25.5"
+                            value={profile_details?.hourly_rate ?? ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              const cleaned = value
+                                .replace(/[^0-9.]/g, "") // keep digits and dot
+                                .replace(/(\..*)\./g, "$1"); // single dot
+                              setProfileDetails((s) => ({ ...s, hourly_rate: cleaned }));
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Skills table */}
+                      <div className="col-md-12">
+                        <div className="mb20">
+                          <div className="d-flex justify-content-between align-items-center mb10">
+                            <label className="heading-color ff-heading fw500 mb0">Skills</label>
+                            <button
+                              type="button"
+                              className="ud-btn btn-thm"
+                              onClick={() => {
+                                const next = Array.isArray(profile_details?.skills) ? [...profile_details.skills] : [];
+                                next.push("");
+                                setProfileDetails((s) => ({ ...s, skills: next }));
+                              }}
+                            >
+                              + Add Skill
+                            </button>
+                          </div>
+
+                          <table className="table table-bordered">
+                            <thead>
+                              <tr>
+                                <th>Skill</th>
+                                <th style={{ width: 80 }}>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(profile_details?.skills ?? []).map((skill, idx) => (
+                                <tr key={idx}>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Skill"
+                                      value={skill}
+                                      onChange={(e) => {
+                                        const next = [...(profile_details?.skills ?? [])];
+                                        next[idx] = e.target.value;
+                                        setProfileDetails((s) => ({ ...s, skills: next }));
+                                      }}
+                                    />
+                                  </td>
+                                  <td className="text-center">
+                                    <span
+                                      className="flaticon-delete text-thm2"
+                                      style={{ cursor: "pointer" }}
+                                      title="Remove skill"
+                                      onClick={() => {
+                                        const next = [...(profile_details?.skills ?? [])];
+                                        next.splice(idx, 1);
+                                        setProfileDetails((s) => ({ ...s, skills: next }));
+                                      }}
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                              {(!profile_details?.skills || profile_details.skills.length === 0) && (
+                                <tr>
+                                  <td colSpan={2} className="text-center text-muted">No skills added</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Services table */}
+                      <div className="col-md-12">
+                        <div className="mb20">
+                          <div className="d-flex justify-content-between align-items-center mb10">
+                            <label className="heading-color ff-heading fw500 mb0">Services</label>
+                            <button
+                              type="button"
+                              className="ud-btn btn-thm"
+                              onClick={() => {
+                                const next = Array.isArray(profile_details?.services_list)
+                                  ? [...profile_details.services_list]
+                                  : [];
+                                next.push("");
+                                setProfileDetails((s) => ({ ...s, services_list: next }));
+                              }}
+                            >
+                              + Add Service
+                            </button>
+                          </div>
+
+                          <table className="table table-bordered">
+                            <thead>
+                              <tr>
+                                <th>Service</th>
+                                <th style={{ width: 80 }}>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(profile_details?.services_list ?? []).map((service, idx) => (
+                                <tr key={idx}>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Service"
+                                      value={service}
+                                      onChange={(e) => {
+                                        const next = [...(profile_details?.services_list ?? [])];
+                                        next[idx] = e.target.value;
+                                        setProfileDetails((s) => ({ ...s, services_list: next }));
+                                      }}
+                                    />
+                                  </td>
+                                  <td className="text-center">
+                                    <span
+                                      className="flaticon-delete text-thm2"
+                                      style={{ cursor: "pointer" }}
+                                      title="Remove service"
+                                      onClick={() => {
+                                        const next = [...(profile_details?.services_list ?? [])];
+                                        next.splice(idx, 1);
+                                        setProfileDetails((s) => ({ ...s, services_list: next }));
+                                      }}
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                              {(!profile_details?.services_list || profile_details.services_list.length === 0) && (
+                                <tr>
+                                  <td colSpan={2} className="text-center text-muted">No services added</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+
+
+
+                      {/* Fixed Price Projects (table like Services) */}
+                      {(() => {
+                        // Normalize to an editable array even if backend returns an object map
+                        const raw = profile_details?.fixed_price_projects;
+                        const projectsArray = Array.isArray(raw)
+                          ? raw
+                          : raw && typeof raw === 'object'
+                            ? Object.entries(raw).map(([domain, price]) => ({ domain, price }))
+                            : [];
+
+                        const setFromArray = (arr) => setProfileDetails((s) => ({ ...s, fixed_price_projects: arr }));
+
+                        return (
+                          <div className="col-md-12">
+                            <div className="mb20">
+                              <div className="d-flex justify-content-between align-items-center mb10">
+                                <label className="heading-color ff-heading fw500 mb0">Fixed Price Projects</label>
+                                <button
+                                  type="button"
+                                  className="ud-btn btn-thm"
+                                  onClick={() => {
+                                    const next = [...projectsArray];
+                                    next.push({ domain: "", price: "" });
+                                    setFromArray(next);
+                                  }}
+                                >
+                                  + Add Fixed Price Project
+                                </button>
+                              </div>
+
+                              <table className="table table-bordered">
+                                <thead>
+                                  <tr>
+                                    <th>Domain</th>
+                                    <th>Price</th>
+                                    <th style={{ width: 80 }}>Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {projectsArray.map((p, idx) => (
+                                    <tr key={idx}>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          placeholder="e.g. Website"
+                                          value={p?.domain || ""}
+                                          onChange={(e) => {
+                                            const next = [...projectsArray];
+                                            next[idx] = { ...(next[idx] || {}), domain: e.target.value };
+                                            setFromArray(next);
+                                          }}
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          placeholder="e.g. 500"
+                                          value={p?.price || ""}
+                                          onChange={(e) => {
+                                            const val = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                                            const next = [...projectsArray];
+                                            next[idx] = { ...(next[idx] || {}), price: val };
+                                            setFromArray(next);
+                                          }}
+                                        />
+                                      </td>
+                                      <td className="text-center">
+                                        <span
+                                          className="flaticon-delete text-thm2"
+                                          style={{ cursor: "pointer" }}
+                                          title="Remove project"
+                                          onClick={() => {
+                                            const next = [...projectsArray];
+                                            next.splice(idx, 1);
+                                            setFromArray(next);
+                                          }}
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                  {projectsArray.length === 0 && (
+                                    <tr>
+                                      <td colSpan={3} className="text-center text-muted">No projects added</td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+
+                      {/* Availability
       <div className="col-md-12">
         <div className="mb20">
           <label className="heading-color ff-heading fw500 mb10">Availability</label>
@@ -1063,703 +1063,702 @@ const handleCompanyVerificationSubmit = async () => {
         </div>
       </div> */}
 
-      {/* Status and Wallet (read-only) */}
-      <div className="col-sm-6">
-        <div className="mb20">
-          <label className="heading-color ff-heading fw500 mb10">Status</label>
-          <input type="text" className="form-control" value={profile_details?.status ?? ""} readOnly />
-        </div>
-      </div>
-      {/* <div className="col-sm-6">
+                      {/* Status and Wallet (read-only) */}
+                      <div className="col-sm-6">
+                        <div className="mb20">
+                          <label className="heading-color ff-heading fw500 mb10">Status</label>
+                          <input type="text" className="form-control" value={profile_details?.status ?? ""} readOnly />
+                        </div>
+                      </div>
+                      {/* <div className="col-sm-6">
         <div className="mb20">
           <label className="heading-color ff-heading fw500 mb10">Wallet Balance</label>
           <input type="text" className="form-control" value={profile_details?.wallet_balance ?? ""} readOnly />
         </div>
       </div> */}
 
-      {/* Verification (read-only) */}
-      <div className="col-sm-6">
-        <div className="mb20">
-          <label className="heading-color ff-heading fw500 mb10">Verified</label>
-          <input type="text" className="form-control" value={profile_details?.verified ? "true" : "false"} readOnly />
-        </div>
-      </div>
-      {/* <div className="col-md-12">
+                      {/* Verification (read-only) */}
+                      <div className="col-sm-6">
+                        <div className="mb20">
+                          <label className="heading-color ff-heading fw500 mb10">Verified</label>
+                          <input type="text" className="form-control" value={profile_details?.verified ? "true" : "false"} readOnly />
+                        </div>
+                      </div>
+                      {/* <div className="col-md-12">
         <div className="mb20">
           <label className="heading-color ff-heading fw500 mb10">Remarks</label>
           <input type="text" className="form-control" value={profile_details?.remarks ?? ""} readOnly />
         </div>
       </div> */}
 
-{/* Certifications table */}
-<div className="col-md-12">
-  <div className="mb20">
-    <div className="d-flex justify-content-between align-items-center mb10">
-      <label className="heading-color ff-heading fw500 mb0">Certifications</label>
-      <button
-        type="button"
-        className="ud-btn btn-thm"
-        onClick={() => {
-          const next = Array.isArray(profile_details?.certifications)
-            ? [...profile_details.certifications]
-            : [];
-          next.push({ name: "", url: "" });
-          setProfileDetails((s) => ({ ...s, certifications: next }));
-        }}
-      >
-        + Add Certification
-      </button>
-    </div>
+                      {/* Certifications table */}
+                      <div className="col-md-12">
+                        <div className="mb20">
+                          <div className="d-flex justify-content-between align-items-center mb10">
+                            <label className="heading-color ff-heading fw500 mb0">Certifications</label>
+                            <button
+                              type="button"
+                              className="ud-btn btn-thm"
+                              onClick={() => {
+                                const next = Array.isArray(profile_details?.certifications)
+                                  ? [...profile_details.certifications]
+                                  : [];
+                                next.push({ name: "", url: "" });
+                                setProfileDetails((s) => ({ ...s, certifications: next }));
+                              }}
+                            >
+                              + Add Certification
+                            </button>
+                          </div>
 
-    <table className="table table-bordered">
-      <thead>
-        <tr>
-          <th>Certification Name</th>
-          <th>Certification URL</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {(profile_details?.certifications ?? []).length === 0 ? (
-          <tr>
-            <td colSpan={3} className="text-center text-muted">
-              No certifications found
-            </td>
-          </tr>
-        ) : (
-          profile_details.certifications.map((c, idx) => (
-            <tr key={idx}>
-              <td>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Certification name"
-                  value={c?.name || ""}
-                  onChange={(e) => {
-                    const next = [...(profile_details?.certifications ?? [])];
-                    next[idx] = { ...(next[idx] || {}), name: e.target.value };
-                    setProfileDetails((s) => ({ ...s, certifications: next }));
-                  }}
-                />
-              </td>
-              <td>
-                <input
-                  type="url"
-                  className="form-control"
-                  placeholder="Certification URL (optional)"
-                  value={c?.url || ""}
-                  onChange={(e) => {
-                    const next = [...(profile_details?.certifications ?? [])];
-                    next[idx] = { ...(next[idx] || {}), url: e.target.value };
-                    setProfileDetails((s) => ({ ...s, certifications: next }));
-                  }}
-                />
-              </td>
-              <td className="text-center">
-                <span
-                  className="flaticon-delete text-thm2"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => {
-                    const next = [...(profile_details?.certifications ?? [])];
-                    next.splice(idx, 1);
-                    setProfileDetails((s) => ({ ...s, certifications: next }));
-                  }}
-                ></span>
-              </td>
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-
-{/* Portfolio table */}
-<div className="col-md-12">
-  <div className="mb20">
-    <div className="d-flex justify-content-between align-items-center mb10">
-      <label className="heading-color ff-heading fw500 mb0">Portfolio</label>
-      <button
-        type="button"
-        className="ud-btn btn-thm"
-        onClick={() => {
-          const next = Array.isArray(profile_details?.portfolio_projects)
-            ? [...profile_details.portfolio_projects]
-            : [];
-          next.push({ title: "", year: "", description: "", files: [] });
-          setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
-        }}
-      >
-        + Add Project
-      </button>
-    </div>
-
-    <table className="table table-bordered">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Year</th>
-          <th>Description</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {(profile_details?.portfolio_projects ?? []).length === 0 ? (
-          <tr>
-            <td colSpan={4} className="text-center text-muted">
-              No portfolio found
-            </td>
-          </tr>
-        ) : (
-          profile_details.portfolio_projects.map((p, idx) => (
-            <tr key={idx}>
-              <td>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Title"
-                  value={p?.title || ""}
-                  onChange={(e) => {
-                    const next = [...(profile_details?.portfolio_projects ?? [])];
-                    next[idx] = { ...(next[idx] || {}), title: e.target.value };
-                    setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
-                  }}
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Year"
-                  value={p?.year || ""}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, "");
-                    const next = [...(profile_details?.portfolio_projects ?? [])];
-                    next[idx] = { ...(next[idx] || {}), year: val };
-                    setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
-                  }}
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Description"
-                  value={p?.description || ""}
-                  onChange={(e) => {
-                    const next = [...(profile_details?.portfolio_projects ?? [])];
-                    next[idx] = { ...(next[idx] || {}), description: e.target.value };
-                    setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
-                  }}
-                />
-              </td>
-              <td className="text-center">
-                <span
-                  className="flaticon-delete text-thm2"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => {
-                    const next = [...(profile_details?.portfolio_projects ?? [])];
-                    next.splice(idx, 1);
-                    setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
-                  }}
-                ></span>
-              </td>
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-  </div>
-</div>
+                          <table className="table table-bordered">
+                            <thead>
+                              <tr>
+                                <th>Certification Name</th>
+                                <th>Certification URL</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(profile_details?.certifications ?? []).length === 0 ? (
+                                <tr>
+                                  <td colSpan={3} className="text-center text-muted">
+                                    No certifications found
+                                  </td>
+                                </tr>
+                              ) : (
+                                profile_details.certifications.map((c, idx) => (
+                                  <tr key={idx}>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Certification name"
+                                        value={c?.name || ""}
+                                        onChange={(e) => {
+                                          const next = [...(profile_details?.certifications ?? [])];
+                                          next[idx] = { ...(next[idx] || {}), name: e.target.value };
+                                          setProfileDetails((s) => ({ ...s, certifications: next }));
+                                        }}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="url"
+                                        className="form-control"
+                                        placeholder="Certification URL (optional)"
+                                        value={c?.url || ""}
+                                        onChange={(e) => {
+                                          const next = [...(profile_details?.certifications ?? [])];
+                                          next[idx] = { ...(next[idx] || {}), url: e.target.value };
+                                          setProfileDetails((s) => ({ ...s, certifications: next }));
+                                        }}
+                                      />
+                                    </td>
+                                    <td className="text-center">
+                                      <span
+                                        className="flaticon-delete text-thm2"
+                                        style={{ cursor: "pointer" }}
+                                        onClick={() => {
+                                          const next = [...(profile_details?.certifications ?? [])];
+                                          next.splice(idx, 1);
+                                          setProfileDetails((s) => ({ ...s, certifications: next }));
+                                        }}
+                                      ></span>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
 
 
-      {/* Bio in textfield */}
-      <div className="col-md-12">
-        <div className="mb20">
-          <label className="heading-color ff-heading fw500 mb10">Bio</label>
-          <textarea
-            className="form-control"
-            rows={3}
-            placeholder="Bio"
-            value={form.bio}
-            onChange={(e) => setForm((s) => ({ ...s, bio: e.target.value }))}
-          />
-        </div>
-      </div>
+                      {/* Portfolio table */}
+                      <div className="col-md-12">
+                        <div className="mb20">
+                          <div className="d-flex justify-content-between align-items-center mb10">
+                            <label className="heading-color ff-heading fw500 mb0">Portfolio</label>
+                            <button
+                              type="button"
+                              className="ud-btn btn-thm"
+                              onClick={() => {
+                                const next = Array.isArray(profile_details?.portfolio_projects)
+                                  ? [...profile_details.portfolio_projects]
+                                  : [];
+                                next.push({ title: "", year: "", description: "", files: [] });
+                                setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
+                              }}
+                            >
+                              + Add Project
+                            </button>
+                          </div>
 
-{/* Education table */}
-<div className="col-md-12">
-  <div className="mb20">
-    <div className="d-flex justify-content-between align-items-center mb10">
-      <label className="heading-color ff-heading fw500 mb0">Education</label>
-      <button
-        type="button"
-        className="ud-btn btn-thm"
-        onClick={() => {
-          const next = Array.isArray(profile_details?.education)
-            ? [...profile_details.education]
-            : [];
-          next.push({ degree: "", institution: "", start_year: "", end_year: "" });
-          setProfileDetails((s) => ({ ...s, education: next }));
-        }}
-      >
-        + Add Education
-      </button>
-    </div>
-
-    <table className="table table-bordered">
-      <thead>
-        <tr>
-          <th>Degree</th>
-          <th>Institution</th>
-          <th>Start Year</th>
-          <th>End Year</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {(profile_details?.education ?? []).length === 0 ? (
-          <tr>
-            <td colSpan={5} className="text-center text-muted">
-              No education found
-            </td>
-          </tr>
-        ) : (
-          profile_details.education.map((edu, idx) => (
-            <tr key={idx}>
-              <td>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Degree"
-                  value={edu?.degree || ""}
-                  onChange={(e) => {
-                    const next = [...(profile_details?.education ?? [])];
-                    next[idx] = { ...(next[idx] || {}), degree: e.target.value };
-                    setProfileDetails((s) => ({ ...s, education: next }));
-                  }}
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Institution"
-                  value={edu?.institution || ""}
-                  onChange={(e) => {
-                    const next = [...(profile_details?.education ?? [])];
-                    next[idx] = { ...(next[idx] || {}), institution: e.target.value };
-                    setProfileDetails((s) => ({ ...s, education: next }));
-                  }}
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Start Year"
-                  value={edu?.start_year || ""}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, "");
-                    const next = [...(profile_details?.education ?? [])];
-                    next[idx] = { ...(next[idx] || {}), start_year: val };
-                    setProfileDetails((s) => ({ ...s, education: next }));
-                  }}
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="End Year"
-                  value={edu?.end_year || ""}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, "");
-                    const next = [...(profile_details?.education ?? [])];
-                    next[idx] = { ...(next[idx] || {}), end_year: val };
-                    setProfileDetails((s) => ({ ...s, education: next }));
-                  }}
-                />
-              </td>
-              <td className="text-center">
-                <span
-                  className="flaticon-delete text-thm2"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => {
-                    const next = [...(profile_details?.education ?? [])];
-                    next.splice(idx, 1);
-                    setProfileDetails((s) => ({ ...s, education: next }));
-                  }}
-                ></span>
-              </td>
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-  </div>
-</div>
+                          <table className="table table-bordered">
+                            <thead>
+                              <tr>
+                                <th>Title</th>
+                                <th>Year</th>
+                                <th>Description</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(profile_details?.portfolio_projects ?? []).length === 0 ? (
+                                <tr>
+                                  <td colSpan={4} className="text-center text-muted">
+                                    No portfolio found
+                                  </td>
+                                </tr>
+                              ) : (
+                                profile_details.portfolio_projects.map((p, idx) => (
+                                  <tr key={idx}>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Title"
+                                        value={p?.title || ""}
+                                        onChange={(e) => {
+                                          const next = [...(profile_details?.portfolio_projects ?? [])];
+                                          next[idx] = { ...(next[idx] || {}), title: e.target.value };
+                                          setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
+                                        }}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Year"
+                                        value={p?.year || ""}
+                                        onChange={(e) => {
+                                          const val = e.target.value.replace(/[^0-9]/g, "");
+                                          const next = [...(profile_details?.portfolio_projects ?? [])];
+                                          next[idx] = { ...(next[idx] || {}), year: val };
+                                          setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
+                                        }}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Description"
+                                        value={p?.description || ""}
+                                        onChange={(e) => {
+                                          const next = [...(profile_details?.portfolio_projects ?? [])];
+                                          next[idx] = { ...(next[idx] || {}), description: e.target.value };
+                                          setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
+                                        }}
+                                      />
+                                    </td>
+                                    <td className="text-center">
+                                      <span
+                                        className="flaticon-delete text-thm2"
+                                        style={{ cursor: "pointer" }}
+                                        onClick={() => {
+                                          const next = [...(profile_details?.portfolio_projects ?? [])];
+                                          next.splice(idx, 1);
+                                          setProfileDetails((s) => ({ ...s, portfolio_projects: next }));
+                                        }}
+                                      ></span>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
 
 
-      {/* Languages editable list */}
-      <div className="col-md-12">
-        <div className="mb20">
-          <div className="d-flex justify-content-between align-items-center mb10">
-            <label className="heading-color ff-heading fw500 mb0">Languages</label>
-            <button
-              type="button"
-              className="ud-btn btn-thm"
-              onClick={() => {
-                const next = Array.isArray(profile_details?.languages) ? [...profile_details.languages] : [];
-                next.push("");
-                setProfileDetails((s) => ({ ...s, languages: next }));
-              }}
-            >
-              + Add Language
-            </button>
-          </div>
-          {(profile_details?.languages ?? [""]).map((lan, idx) => (
-            <div key={idx} className="d-flex align-items-center mb10">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Language"
-                value={lan}
-                onChange={(e) => {
-                  const next = [...(profile_details?.languages ?? [])];
-                  next[idx] = e.target.value;
-                  setProfileDetails((s) => ({ ...s, languages: next }));
-                }}
-              />
-              <a
-                className="tag-delt text-thm2 ml10"
-                onClick={() => {
-                  const next = [...(profile_details?.languages ?? [])];
-                  next.splice(idx, 1);
-                  setProfileDetails((s) => ({ ...s, languages: next }));
-                }}
-                title="Remove language"
-                role="button"
-              >
-                <span className="flaticon-delete text-thm2" />
-              </a>
-            </div>
-          ))}
-        </div>
-      </div>
+                      {/* Bio in textfield */}
+                      <div className="col-md-12">
+                        <div className="mb20">
+                          <label className="heading-color ff-heading fw500 mb10">Bio</label>
+                          <textarea
+                            className="form-control"
+                            rows={3}
+                            placeholder="Bio"
+                            value={form.bio}
+                            onChange={(e) => setForm((s) => ({ ...s, bio: e.target.value }))}
+                          />
+                        </div>
+                      </div>
 
-        {/* Save Button: enabled only when data has changed; green when enabled */}
-<div className="col-md-12">
-  <div className="text-start">
-    <button
-      type="submit"
-      disabled={!hasChanges}
-      className={`ud-btn ${hasChanges ? "btn-thm" : "btn-secondary"} `}
-      style={{
-        cursor: hasChanges ? "pointer" : "not-allowed",
-        opacity: hasChanges ? 1 : 0.6, // greyed-out effect
-      }}
-    >
-      Save Changes
-      <i className="fal fa-arrow-right-long" />
-    </button>
-  </div>
+                      {/* Education table */}
+                      <div className="col-md-12">
+                        <div className="mb20">
+                          <div className="d-flex justify-content-between align-items-center mb10">
+                            <label className="heading-color ff-heading fw500 mb0">Education</label>
+                            <button
+                              type="button"
+                              className="ud-btn btn-thm"
+                              onClick={() => {
+                                const next = Array.isArray(profile_details?.education)
+                                  ? [...profile_details.education]
+                                  : [];
+                                next.push({ degree: "", institution: "", start_year: "", end_year: "" });
+                                setProfileDetails((s) => ({ ...s, education: next }));
+                              }}
+                            >
+                              + Add Education
+                            </button>
+                          </div>
 
-    {/* Divider */}
-  <hr className="my30" style={{ borderTop: "1px solid #ddd" }} />
-</div>
-
-      {/* Verification Sections */}
-   {/* Freelancer (role_id 2): PAN only */}
-{Array.isArray(form.role_id) && form.role_id.includes(2) && (
-  <div className="form-style1">
-    <div className="row">
-      <div className="bdrb1 pb15 mb25">
-        <h6 className="list-title">PAN Verification</h6>
-      </div>
-      <div className="col-sm-6">
-        <div className="mb20">
-          <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
-            PAN Number
-            {profile_details?.pan_verified && (
-              <i className="fas fa-check-circle text-success ml10" title="Verified" />
-            )}
-          </label>
-          <input
-            type="text"
-            className="form-control"
-            placeholder="ABCDE1234F"
-            value={profile_details?.pan_number || ""}
-            readOnly={isPanReadOnly}
-            maxLength={10}
-            style={{ textTransform: "uppercase" }}
-            onChange={(e) => {
-              const value = e.target.value.toUpperCase();
-              setProfileDetails((d) => ({ ...d, pan_number: value }));
-            }}
-          />
-          {/* Error message */}
-          {profile_details?.pan_number &&
-            !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details.pan_number) && (
-              <p className="text-danger mt5">Invalid PAN format (e.g., ABCDE1234F)</p>
-          )}
-        </div>
-      </div>
-      <div className="col-md-12">
-        <div className="text-start">
-          <button
-            type="button"
-            onClick={() => {
-              if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")) {
-                alert("Invalid PAN number. Format: AAAAA9999A");
-                return;
-              }
-              handleCompanyVerificationSubmit();
-            }}
-            disabled={
-              !hasVerificationChanges ||
-              !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
-            }
-            className={`ud-btn ${
-              hasVerificationChanges &&
-              /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
-                ? "btn-thm"
-                : "btn-secondary"
-            }`}
-            style={{
-              cursor:
-                hasVerificationChanges &&
-                /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
-                  ? "pointer"
-                  : "not-allowed",
-              opacity:
-                hasVerificationChanges &&
-                /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
-                  ? 1
-                  : 0.6,
-            }}
-          >
-            Request Verification
-            <i className="fal fa-upload" />
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+                          <table className="table table-bordered">
+                            <thead>
+                              <tr>
+                                <th>Degree</th>
+                                <th>Institution</th>
+                                <th>Start Year</th>
+                                <th>End Year</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(profile_details?.education ?? []).length === 0 ? (
+                                <tr>
+                                  <td colSpan={5} className="text-center text-muted">
+                                    No education found
+                                  </td>
+                                </tr>
+                              ) : (
+                                profile_details.education.map((edu, idx) => (
+                                  <tr key={idx}>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Degree"
+                                        value={edu?.degree || ""}
+                                        onChange={(e) => {
+                                          const next = [...(profile_details?.education ?? [])];
+                                          next[idx] = { ...(next[idx] || {}), degree: e.target.value };
+                                          setProfileDetails((s) => ({ ...s, education: next }));
+                                        }}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Institution"
+                                        value={edu?.institution || ""}
+                                        onChange={(e) => {
+                                          const next = [...(profile_details?.education ?? [])];
+                                          next[idx] = { ...(next[idx] || {}), institution: e.target.value };
+                                          setProfileDetails((s) => ({ ...s, education: next }));
+                                        }}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Start Year"
+                                        value={edu?.start_year || ""}
+                                        onChange={(e) => {
+                                          const val = e.target.value.replace(/[^0-9]/g, "");
+                                          const next = [...(profile_details?.education ?? [])];
+                                          next[idx] = { ...(next[idx] || {}), start_year: val };
+                                          setProfileDetails((s) => ({ ...s, education: next }));
+                                        }}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="End Year"
+                                        value={edu?.end_year || ""}
+                                        onChange={(e) => {
+                                          const val = e.target.value.replace(/[^0-9]/g, "");
+                                          const next = [...(profile_details?.education ?? [])];
+                                          next[idx] = { ...(next[idx] || {}), end_year: val };
+                                          setProfileDetails((s) => ({ ...s, education: next }));
+                                        }}
+                                      />
+                                    </td>
+                                    <td className="text-center">
+                                      <span
+                                        className="flaticon-delete text-thm2"
+                                        style={{ cursor: "pointer" }}
+                                        onClick={() => {
+                                          const next = [...(profile_details?.education ?? [])];
+                                          next.splice(idx, 1);
+                                          setProfileDetails((s) => ({ ...s, education: next }));
+                                        }}
+                                      ></span>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
 
 
+                      {/* Languages editable list */}
+                      <div className="col-md-12">
+                        <div className="mb20">
+                          <div className="d-flex justify-content-between align-items-center mb10">
+                            <label className="heading-color ff-heading fw500 mb0">Languages</label>
+                            <button
+                              type="button"
+                              className="ud-btn btn-thm"
+                              onClick={() => {
+                                const next = Array.isArray(profile_details?.languages) ? [...profile_details.languages] : [];
+                                next.push("");
+                                setProfileDetails((s) => ({ ...s, languages: next }));
+                              }}
+                            >
+                              + Add Language
+                            </button>
+                          </div>
+                          {(profile_details?.languages ?? [""]).map((lan, idx) => (
+                            <div key={idx} className="d-flex align-items-center mb10">
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Language"
+                                value={lan}
+                                onChange={(e) => {
+                                  const next = [...(profile_details?.languages ?? [])];
+                                  next[idx] = e.target.value;
+                                  setProfileDetails((s) => ({ ...s, languages: next }));
+                                }}
+                              />
+                              <a
+                                className="tag-delt text-thm2 ml10"
+                                onClick={() => {
+                                  const next = [...(profile_details?.languages ?? [])];
+                                  next.splice(idx, 1);
+                                  setProfileDetails((s) => ({ ...s, languages: next }));
+                                }}
+                                title="Remove language"
+                                role="button"
+                              >
+                                <span className="flaticon-delete text-thm2" />
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
 
-   {/* Enterprise-specific fields */}
-{Array.isArray(form.role_id) && form.role_id.includes(3) && (
-  <>
-    <div className="bdrb1 pb15 mb25">
-      <h6 className="list-title">Company Verification</h6>
-    </div>
+                      {/* Save Button: enabled only when data has changed; green when enabled */}
+                      <div className="col-md-12">
+                        <div className="text-start">
+                          <button
+                            type="submit"
+                            disabled={!hasChanges}
+                            className={`ud-btn ${hasChanges ? "btn-thm" : "btn-secondary"} `}
+                            style={{
+                              cursor: hasChanges ? "pointer" : "not-allowed",
+                              opacity: hasChanges ? 1 : 0.6, // greyed-out effect
+                            }}
+                          >
+                            Save Changes
+                            <i className="fal fa-arrow-right-long" />
+                          </button>
+                        </div>
 
-    {/* PAN */}
-    <div className="col-sm-6">
-      <div className="mb20">
-        <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
-          PAN Number
-          {profile_details?.pan_verified && (
-            <i className="fas fa-check-circle text-success ml10" title="Verified" />
-          )}
-        </label>
-        <input
-          type="text"
-          className="form-control"
-          placeholder="ABCDE1234F"
-          value={profile_details?.pan_number || ""}
-          readOnly={!!profile_details?.pan_verified} // editable if not verified
-          onChange={(e) =>
-            setProfileDetails((d) => ({ ...d, pan_number: e.target.value }))
-          }
-        />
-      </div>
-    </div>
+                        {/* Divider */}
+                        <hr className="my30" style={{ borderTop: "1px solid #ddd" }} />
+                      </div>
 
-    {/* MCA No */}
-    <div className="col-sm-6">
-      <div className="mb20">
-        <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
-          MCA Incorporation No
-          {profile_details?.mcs_verified && (
-            <i className="fas fa-check-circle text-success ml10" title="Verified" />
-          )}
-        </label>
-        <input
-          type="text"
-          className="form-control"
-          placeholder="CIN / Incorporation No"
-          value={profile_details?.mcs_incorporation_no || ""}
-          readOnly={!!profile_details?.mcs_verified}
-          onChange={(e) =>
-            setProfileDetails((d) => ({ ...d, mcs_incorporation_no: e.target.value }))
-          }
-        />
-      </div>
-    </div>
-
-{/* MCA Doc Upload */}
-<div className="col-sm-6">
-  <div className="mb20">
-    <label className="heading-color ff-heading fw500 mb10">
-      MCA Incorporation Doc
-    </label>
-
-    {/* Input field */}
-    <input
-      type="text"
-      className="form-control mb10"
-      placeholder="Insert document URL"
-      value={profile_details?.mcs_incorporation_image || ""}
-      readOnly
-    />
-
-    {/* Upload + View + Remove */}
-    {!profile_details?.mcs_verified && (
-      <div className="d-flex align-items-center mt10">
-        {/* Hidden file input */}
-        <input
-          id="mcaDocInsert"
-          type="file"
-          accept=".png,.jpg,.jpeg,.pdf"
-          className="d-none"
-          onChange={(e) => {
-            if (e.target.files.length > 0) {
-              const file = e.target.files[0];
-              // Validate size (<= 5 MB) and allow png/jpg/jpeg/pdf
-              const isImage = /^image\/(png|jpe?g)$/i.test(file.type);
-              const isPdf = /application\/pdf/i.test(file.type);
-              if (file.size > 5 * 1024 * 1024) {
-                Swal.fire({ icon: "error", title: "File too large", text: "Max file size is 5 MB." });
-                return;
-              }
-              if (!isImage && !isPdf) {
-                Swal.fire({ icon: "error", title: "Invalid file", text: "Allowed types: PNG, JPG, PDF." });
-                return;
-              }
-
-              // Save file to state so Upload Doc button can hit API
-              setMcsDocFile(file);
-
-              const url = URL.createObjectURL(file);
-              // Put selected file URL in input
-              setMcsDocPreview(url);
-              setProfileDetails((d) => ({
-                ...d,
-                mcs_incorporation_image: url,
-              }));
-            }
-          }}
-        />
-
-        {/* Button changes dynamically */}
-        <button
-          type="button"
-          className="ud-btn btn-thm px20 py10 mr10"
-          onClick={async () => {
-            try {
-              if (!mcsDocFile) {
-                // First click → open file chooser
-                document.getElementById("mcaDocInsert").click();
-                return;
-              }
-              setPageLoading(true);
-              // Upload MCA doc via common uploader using dirtry=MCA_License
-              const uploadedUrl = await uploadToProfileService(mcsDocFile, "MCA_License");
-
-              // Persist the uploaded URL into profile_details and clear file state
-              setProfileDetails((d) => ({ ...d, mcs_incorporation_image: uploadedUrl }));
-              setMcsDocPreview(null);
-              setMcsDocFile(null);
-
-              Swal.fire({
-                icon: "success",
-                title: "Uploaded!",
-                text: "Document uploaded successfully",
-                timer: 2000,
-                showConfirmButton: false,
-              });
-            } catch (err) {
-              console.error("[ProfileDetails] MCA upload error", err);
-              const msg = err?.response?.data?.message || err?.message || "Upload failed";
-              Swal.fire({ icon: "error", title: "Upload failed", text: msg });
-            } finally {
-              setPageLoading(false);
-            }
-          }}
-        >
-          <i className="fal fa-upload mr5" />
-          {mcsDocPreview || profile_details?.mcs_incorporation_image
-            ? "Upload Doc"
-            : "Insert Doc"}
-        </button>
-
-        {/* Eye + Remove icons (only if doc available) */}
-        {(mcsDocPreview || profile_details?.mcs_incorporation_image) && (
-          <>
-            {/* View */}
-            <a
-              href={mcsDocPreview || profile_details?.mcs_incorporation_image}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-outline-dark px10 py8 mr5"
-              style={{ borderRadius: "50%" }}
-            >
-              <i className="fal fa-eye"></i>
-            </a>
-
-            {/* Remove */}
-            <button
-              type="button"
-              className="btn btn-outline-danger px10 py8"
-              style={{ borderRadius: "50%" }}
-              onClick={() => {
-                setMcsDocPreview(null);
-                setProfileDetails((d) => ({
-                  ...d,
-                  mcs_incorporation_image: "",
-                }));
-              }}
-            >
-              <i className="fal fa-times"></i>
-            </button>
-          </>
-        )}
-      </div>
-    )}
-  </div>
-</div>
+                      {/* Verification Sections */}
+                      {/* Freelancer (role_id 2): PAN only */}
+                      {Array.isArray(form.role_id) && form.role_id.includes(2) && (
+                        <div className="form-style1">
+                          <div className="row">
+                            <div className="bdrb1 pb15 mb25">
+                              <h6 className="list-title">PAN Verification</h6>
+                            </div>
+                            <div className="col-sm-6">
+                              <div className="mb20">
+                                <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
+                                  PAN Number
+                                  {profile_details?.pan_verified && (
+                                    <i className="fas fa-check-circle text-success ml10" title="Verified" />
+                                  )}
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder="ABCDE1234F"
+                                  value={profile_details?.pan_number || ""}
+                                  readOnly={isPanReadOnly}
+                                  maxLength={10}
+                                  style={{ textTransform: "uppercase" }}
+                                  onChange={(e) => {
+                                    const value = e.target.value.toUpperCase();
+                                    setProfileDetails((d) => ({ ...d, pan_number: value }));
+                                  }}
+                                />
+                                {/* Error message */}
+                                {profile_details?.pan_number &&
+                                  !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details.pan_number) && (
+                                    <p className="text-danger mt5">Invalid PAN format (e.g., ABCDE1234F)</p>
+                                  )}
+                              </div>
+                            </div>
+                            <div className="col-md-12">
+                              <div className="text-start">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")) {
+                                      alert("Invalid PAN number. Format: AAAAA9999A");
+                                      return;
+                                    }
+                                    handleCompanyVerificationSubmit();
+                                  }}
+                                  disabled={
+                                    !hasVerificationChanges ||
+                                    !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
+                                  }
+                                  className={`ud-btn ${hasVerificationChanges &&
+                                    /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
+                                    ? "btn-thm"
+                                    : "btn-secondary"
+                                    }`}
+                                  style={{
+                                    cursor:
+                                      hasVerificationChanges &&
+                                        /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
+                                        ? "pointer"
+                                        : "not-allowed",
+                                    opacity:
+                                      hasVerificationChanges &&
+                                        /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
+                                        ? 1
+                                        : 0.6,
+                                  }}
+                                >
+                                  Request Verification
+                                  <i className="fal fa-upload" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
 
 
+                      {/* Enterprise-specific fields */}
+                      {Array.isArray(form.role_id) && form.role_id.includes(3) && (
+                        <>
+                          <div className="bdrb1 pb15 mb25">
+                            <h6 className="list-title">Company Verification</h6>
+                          </div>
 
-    {/* GSTIN */}
-    <div className="col-sm-6">
-      <div className="mb20">
-        <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
-          GSTIN Number
-          {profile_details?.gstin_verified && (
-            <i className="fas fa-check-circle text-success ml10" title="Verified" />
-          )}
-        </label>
-        <input
-          type="text"
-          className="form-control"
-          placeholder="22AAAAA0000A1Z5"
-          value={profile_details?.gstin_number || ""}
-          readOnly={!!profile_details?.gstin_verified}
-          onChange={(e) =>
-            setProfileDetails((d) => ({ ...d, gstin_number: e.target.value }))
-          }
-        />
-      </div>
-    </div>
+                          {/* PAN */}
+                          <div className="col-sm-6">
+                            <div className="mb20">
+                              <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
+                                PAN Number
+                                {profile_details?.pan_verified && (
+                                  <i className="fas fa-check-circle text-success ml10" title="Verified" />
+                                )}
+                              </label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="ABCDE1234F"
+                                value={profile_details?.pan_number || ""}
+                                readOnly={!!profile_details?.pan_verified} // editable if not verified
+                                onChange={(e) =>
+                                  setProfileDetails((d) => ({ ...d, pan_number: e.target.value }))
+                                }
+                              />
+                            </div>
+                          </div>
 
-    {/* Company status
+                          {/* MCA No */}
+                          <div className="col-sm-6">
+                            <div className="mb20">
+                              <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
+                                MCA Incorporation No
+                                {profile_details?.mcs_verified && (
+                                  <i className="fas fa-check-circle text-success ml10" title="Verified" />
+                                )}
+                              </label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="CIN / Incorporation No"
+                                value={profile_details?.mcs_incorporation_no || ""}
+                                readOnly={!!profile_details?.mcs_verified}
+                                onChange={(e) =>
+                                  setProfileDetails((d) => ({ ...d, mcs_incorporation_no: e.target.value }))
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          {/* MCA Doc Upload */}
+                          <div className="col-sm-6">
+                            <div className="mb20">
+                              <label className="heading-color ff-heading fw500 mb10">
+                                MCA Incorporation Doc
+                              </label>
+
+                              {/* Input field */}
+                              <input
+                                type="text"
+                                className="form-control mb10"
+                                placeholder="Insert document URL"
+                                value={profile_details?.mcs_incorporation_image || ""}
+                                readOnly
+                              />
+
+                              {/* Upload + View + Remove */}
+                              {!profile_details?.mcs_verified && (
+                                <div className="d-flex align-items-center mt10">
+                                  {/* Hidden file input */}
+                                  <input
+                                    id="mcaDocInsert"
+                                    type="file"
+                                    accept=".png,.jpg,.jpeg,.pdf"
+                                    className="d-none"
+                                    onChange={(e) => {
+                                      if (e.target.files.length > 0) {
+                                        const file = e.target.files[0];
+                                        // Validate size (<= 5 MB) and allow png/jpg/jpeg/pdf
+                                        const isImage = /^image\/(png|jpe?g)$/i.test(file.type);
+                                        const isPdf = /application\/pdf/i.test(file.type);
+                                        if (file.size > 5 * 1024 * 1024) {
+                                          Swal.fire({ icon: "error", title: "File too large", text: "Max file size is 5 MB." });
+                                          return;
+                                        }
+                                        if (!isImage && !isPdf) {
+                                          Swal.fire({ icon: "error", title: "Invalid file", text: "Allowed types: PNG, JPG, PDF." });
+                                          return;
+                                        }
+
+                                        // Save file to state so Upload Doc button can hit API
+                                        setMcsDocFile(file);
+
+                                        const url = URL.createObjectURL(file);
+                                        // Put selected file URL in input
+                                        setMcsDocPreview(url);
+                                        setProfileDetails((d) => ({
+                                          ...d,
+                                          mcs_incorporation_image: url,
+                                        }));
+                                      }
+                                    }}
+                                  />
+
+                                  {/* Button changes dynamically */}
+                                  <button
+                                    type="button"
+                                    className="ud-btn btn-thm px20 py10 mr10"
+                                    onClick={async () => {
+                                      try {
+                                        if (!mcsDocFile) {
+                                          // First click → open file chooser
+                                          document.getElementById("mcaDocInsert").click();
+                                          return;
+                                        }
+                                        setPageLoading(true);
+                                        // Upload MCA doc via common uploader using dirtry=MCA_License
+                                        const uploadedUrl = await uploadToProfileService(mcsDocFile, "MCA_License", form.user_id);
+
+                                        // Persist the uploaded URL into profile_details and clear file state
+                                        setProfileDetails((d) => ({ ...d, mcs_incorporation_image: uploadedUrl }));
+                                        setMcsDocPreview(null);
+                                        setMcsDocFile(null);
+
+                                        Swal.fire({
+                                          icon: "success",
+                                          title: "Uploaded!",
+                                          text: "Document uploaded successfully",
+                                          timer: 2000,
+                                          showConfirmButton: false,
+                                        });
+                                      } catch (err) {
+                                        console.error("[ProfileDetails] MCA upload error", err);
+                                        const msg = err?.response?.data?.message || err?.message || "Upload failed";
+                                        Swal.fire({ icon: "error", title: "Upload failed", text: msg });
+                                      } finally {
+                                        setPageLoading(false);
+                                      }
+                                    }}
+                                  >
+                                    <i className="fal fa-upload mr5" />
+                                    {mcsDocPreview || profile_details?.mcs_incorporation_image
+                                      ? "Upload Doc"
+                                      : "Insert Doc"}
+                                  </button>
+
+                                  {/* Eye + Remove icons (only if doc available) */}
+                                  {(mcsDocPreview || profile_details?.mcs_incorporation_image) && (
+                                    <>
+                                      {/* View */}
+                                      <a
+                                        href={mcsDocPreview || profile_details?.mcs_incorporation_image}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="btn btn-outline-dark px10 py8 mr5"
+                                        style={{ borderRadius: "50%" }}
+                                      >
+                                        <i className="fal fa-eye"></i>
+                                      </a>
+
+                                      {/* Remove */}
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline-danger px10 py8"
+                                        style={{ borderRadius: "50%" }}
+                                        onClick={() => {
+                                          setMcsDocPreview(null);
+                                          setProfileDetails((d) => ({
+                                            ...d,
+                                            mcs_incorporation_image: "",
+                                          }));
+                                        }}
+                                      >
+                                        <i className="fal fa-times"></i>
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+
+
+
+                          {/* GSTIN */}
+                          <div className="col-sm-6">
+                            <div className="mb20">
+                              <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
+                                GSTIN Number
+                                {profile_details?.gstin_verified && (
+                                  <i className="fas fa-check-circle text-success ml10" title="Verified" />
+                                )}
+                              </label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="22AAAAA0000A1Z5"
+                                value={profile_details?.gstin_number || ""}
+                                readOnly={!!profile_details?.gstin_verified}
+                                onChange={(e) =>
+                                  setProfileDetails((d) => ({ ...d, gstin_number: e.target.value }))
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          {/* Company status
     <div className="col-sm-3">
       <div className="form-check mb20">
         <input
@@ -1791,32 +1790,32 @@ const handleCompanyVerificationSubmit = async () => {
       </div>
     </div> */}
 
-    {/* Send for Verification */}
-    <div className="col-md-12">
-      <div className="text-start">
-        <button
-          type="button"
-          disabled={!hasVerificationChanges}
-          onClick={handleCompanyVerificationSubmit}
-          className={`ud-btn ${hasVerificationChanges ? "btn-thm" : "btn-secondary"}`}
-          style={{
-            cursor: hasVerificationChanges ? "pointer" : "not-allowed",
-            opacity: hasVerificationChanges ? 1 : 0.6,
-          }}
-        >
-          Send for Verification <i className="fal fa-upload" />
-        </button>
-      </div>
-    </div>
-  </>
-)}
+                          {/* Send for Verification */}
+                          <div className="col-md-12">
+                            <div className="text-start">
+                              <button
+                                type="button"
+                                disabled={!hasVerificationChanges}
+                                onClick={handleCompanyVerificationSubmit}
+                                className={`ud-btn ${hasVerificationChanges ? "btn-thm" : "btn-secondary"}`}
+                                style={{
+                                  cursor: hasVerificationChanges ? "pointer" : "not-allowed",
+                                  opacity: hasVerificationChanges ? 1 : 0.6,
+                                }}
+                              >
+                                Send for Verification <i className="fal fa-upload" />
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
 
 
-    </>
-  )}
+                    </>
+                  )}
 
 
-</>
+                </>
 
               )}
             </div>
