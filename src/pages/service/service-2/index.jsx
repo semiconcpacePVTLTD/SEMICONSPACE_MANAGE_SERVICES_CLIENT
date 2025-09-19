@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 import Breadcumb3 from "@/components/breadcumb/Breadcumb3";
 import Breadcumb4 from "@/components/breadcumb/Breadcumb4";
-import TrendingService3 from "@/components/section/TrendingService3";
+import TrendingService7 from "@/components/section/TrendingService7";
 import TabSection1 from "@/components/section/TabSection1";
 
 import MetaComponent from "@/components/common/MetaComponent";
@@ -49,7 +49,7 @@ export default function ServicePage2() {
       <MetaComponent meta={metadata} />
       <Breadcumb3 path={["Home", "Services"]} />
       <Breadcumb4 />
-      <TrendingService3 services={serviceData ?? services ?? []} title="Our Popular Services" link="" />
+      <TrendingService7 services={serviceData ?? services ?? []} title="Our Popular Services" link="" />
     </>
   );
 }

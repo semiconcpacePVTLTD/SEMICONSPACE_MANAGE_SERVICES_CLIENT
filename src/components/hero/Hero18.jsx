@@ -1,3 +1,4 @@
+
 import { Link, useNavigate } from "react-router-dom";
 // eslint-disable-next-line no-unused-vars
 import React, { useState } from "react";
@@ -11,9 +12,11 @@ const roleOptions = [
   "Programming & Tech",
 ];
 
-const popularTags = ["Designer", "Developer", "Web", "IOS", "PHP", "Senior"];
-
 export default function Hero18({ service, services }) {
+  // Make popular tags dynamic from services
+  const popularTags = services && services.length > 0
+    ? services.slice(0, 6).map(s => ({ name: s.name || s.title || "Service", id: s.uuid || s.id }))
+    : ["Designer", "Developer", "Web", "IOS", "PHP", "Senior"].map(name => ({ name, id: null }));
   const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState(null);
 
@@ -115,9 +118,15 @@ export default function Hero18({ service, services }) {
               <p className="animate-up-2 text-white ff-heading mt30 mb15">Popular Searches</p>
               <div className="home9-tags at-home12 d-md-flex align-items-center animate-up-4">
                 {popularTags.map((elm, i) => (
-                  <a key={i} className="bdrs60 mb-2 mb-md-0" href="#">
-                    {elm}
-                  </a>
+                  elm.id ? (
+                    <Link key={i} className="bdrs60 mb-2 mb-md-0" to={`/service-single/${elm.id}`}>
+                      {elm.name}
+                    </Link>
+                  ) : (
+                    <a key={i} className="bdrs60 mb-2 mb-md-0" href="#">
+                      {elm.name}
+                    </a>
+                  )
                 ))}
               </div>
             </div>
