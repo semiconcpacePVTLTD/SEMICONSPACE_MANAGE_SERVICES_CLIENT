@@ -16,12 +16,7 @@ export default function FreelancerDetail1({ data }) {
     : (typeof details?.job_success === "number" ? `${details.job_success}%` : (fallbackJobSuccess || "N/A"));
 
   // Safely build hourly rate from details or profile; avoid referencing an undefined variable
-  const hourlyRate =
-    typeof details?.hourly_rate === "number"
-      ? `$${details.hourly_rate}/hr`
-      : typeof profile?.hourly_rate === "number"
-        ? `$${profile.hourly_rate}/hr`
-        : "N/A";
+  const hourlyRate = (details?.hourly_rate !== null)
 
   const description = details?.bio ?? profile?.bio ?? "N/A";
 
@@ -31,77 +26,55 @@ export default function FreelancerDetail1({ data }) {
         <div className="container">
           <div className="row wow fadeInUp">
             <div className="col-lg-8">
-              <div className="row">
-                <div className="col-sm-6 col-xl-3">
-                  <div className="iconbox-style1 contact-style d-flex align-items-start mb30">
-                    <div className="icon flex-shrink-0">
-                      <span className="flaticon-target" />
-                    </div>
-                    <div className="details">
-                      <h5 className="title">Job Success</h5>
-                      <p className="mb-0 text">{jobSuccess}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-sm-6 col-xl-3">
-                  <div className="iconbox-style1 contact-style d-flex align-items-start mb30">
-                    <div className="icon flex-shrink-0">
-                      <span className="flaticon-fifteen" />
-                    </div>
-                    <div className="details">
-                      <h5 className="title">Hourly Rate</h5>
-                      <p className="mb-0 text">{hourlyRate}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+
               <div className="service-about">
                 <h4>Description</h4>
                 <p className="text mb30">{description}</p>
                 <hr className="opacity-100 mb60 mt60" />
                 <h4 className="mb30">Education</h4>
-                <div className="educational-quality">
+                <div className="educational-quality timeline">
                   {(details?.education ?? []).length ? (
                     details.education.map((edu, i) => (
-                      <div key={i} className={i === 0 ? "" : "before-none"}>
-                        <span className="tag">{[edu.start_year, edu.end_year].filter(Boolean).join(" - ") || "N/A"}</span>
-                        <h5 className="mt15">{edu.degree ?? "N/A"}</h5>
-                        <h6 className="text-thm">{edu.institution ?? "N/A"}</h6>
-                        <p>{edu.description ?? "N/A"}</p>
+                      <div key={i} className={`timeline-item ${i === 0 ? "before-none" : ""}`}>
+                        <div className="timeline-dot"></div>
+                        <div className="timeline-content">
+                          <span className="tag">
+                            {[edu.start_year, edu.end_year].filter(Boolean).join(" - ") || "N/A"}
+                          </span>
+                          <h5 className="mt15">{edu.degree ?? "N/A"}</h5>
+                          <h6 className="text-thm">{edu.institution ?? "N/A"}</h6>
+                          <p>{edu.description ?? "N/A"}</p>
+                        </div>
                       </div>
                     ))
                   ) : (
                     <div className="wrapper mb40"><p>N/A</p></div>
                   )}
                 </div>
+
                 <hr className="opacity-100 mb60" />
-                <h4 className="mb30">Work &amp; Experience</h4>
-                <div className="educational-quality">
+
+                <h4 className="mb30">Work & Experience</h4>
+                <div className="educational-quality timeline">
                   {(details?.experience ?? []).length ? (
                     details.experience.map((exp, i) => (
-                      <div key={i} className={i === 0 ? "" : "before-none"}>
-                        <span className="tag">{[exp.start_year, exp.end_year].filter(Boolean).join(" - ") || "N/A"}</span>
-                        <h5 className="mt15">{exp.position ?? "N/A"}</h5>
-                        <h6 className="text-thm">{exp.company ?? "N/A"}</h6>
-                        <p>{exp.description ?? "N/A"}</p>
+                      <div key={i} className={`timeline-item ${i === 0 ? "before-none" : ""}`}>
+                        <div className="timeline-dot"></div>
+                        <div className="timeline-content">
+                          <span className="tag">
+                            {[exp.start_year, exp.end_year].filter(Boolean).join(" - ") || "N/A"}
+                          </span>
+                          <h5 className="mt15">{exp.position ?? "N/A"}</h5>
+                          <h6 className="text-thm">{exp.company ?? "N/A"}</h6>
+                          <p>{exp.description ?? "N/A"}</p>
+                        </div>
                       </div>
                     ))
                   ) : (
                     <div className="wrapper mb40"><p>N/A</p></div>
                   )}
                 </div>
-                <hr className="opacity-100 mb60" />
-                <h4 className="mb30">Featured Services</h4>
-                <div className="row mb35">
-                  {product1.slice(0, 3).map((item, i) => (
-                    <div className="col-12 col-md-6" key={i}>
-                      <FreelancerFutureCard1 data={item} />
-                    </div>
-                  ))}
-                </div>
-                {/* <hr className="opacity-100" /> */}
-                {/* <ServiceDetailReviewInfo1 /> */}
-                {/* <ServiceDetailComment1 /> */}
+
               </div>
             </div>
             <div className="col-lg-4">

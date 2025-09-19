@@ -15,7 +15,7 @@ const metadata = {
 };
 
 export default function HomePage18() {
-    const [services, setServices] = useState([]);
+  const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,10 +45,10 @@ export default function HomePage18() {
   return (
     <>
       <MetaComponent meta={metadata} />
-<Header19 service={selectedService} services={services} />
+      <Header19 service={selectedService} services={services} />
       <div className="body_content">
-        <Hero18  services={services} />
-        <BrowserCategory3  />
+        <Hero18 services={services} />
+        <BrowserCategory3 />
         <TrendingService3 services={services} />
         <NeedSomething18 />
         <CounterInfo1 />

@@ -69,31 +69,14 @@ export default function ServiceDetail3({ service, loading }) {
           : f?.jobSuccess ?? undefined,
     }));
 
-  // PCB-related projects under About section
-  const projects = [
-    {
-      title: "4-layer High-Speed PCB for IoT Gateway",
-      description:
-        "Need Altium layout with impedance control, EMI best practices, and design for prototype assembly.",
-      budget: "$800 - $1,200 • Fixed",
-      posted: "2 days ago",
-    },
-    {
-      title: "Power Supply Board (48V to 12V) with Protections",
-      description:
-        "DC-DC converter design with thermal analysis, short-circuit/OVP/UVP protections, and test plan.",
-      budget: "$35 - $60/hr • Hourly",
-      posted: "5 days ago",
-    },
-    {
-      title: "RF PCB for BLE + GPS Tracker",
-      description:
-        "2.4GHz RF layout, controlled stack-up, ground stitching, and antenna matching network recommendations.",
-      budget: "$1,500 • Fixed",
-      posted: "1 week ago",
-    },
-  ];
+  const [shuffled, setShuffled] = useState([]);
 
+  useEffect(() => {
+    // Shuffle once on mount
+    const copy = [...sidebarList];
+    const shuffledArr = copy.sort(() => 0 - Math.random()).slice(0, 4);
+    setShuffled(shuffledArr);
+  }, [sidebarList]);
   return (
     <>
       <StickyContainer>
@@ -114,7 +97,7 @@ export default function ServiceDetail3({ service, loading }) {
                             Professional PCB Design, Layout & Prototyping
                             Services
                           </h2>
-                        )}
+                        )}``
 
                       </div>
                     </div>
@@ -163,15 +146,15 @@ export default function ServiceDetail3({ service, loading }) {
                     </div>
                   </div>
 
-                  <ServiceDetailSlider2 images={data?.imgURLs} />
+                  <ServiceDetailSlider2
+                    images={data?.imgURLs?.length ? data.imgURLs : ["/images/image_not_fount.webp"]}
+                  />
                   <div className="service-about">
                     <div className="row g-4">
                       {/* About Card */}
                       <div className="col-12">
-                        <div className="p-4 bg-white rounded shadow-sm h-100">
-                          <h5 className="fw600 mb2 d-flex align-items-center">
-                            <i className="fas fa-info-circle me-2 text-primary"></i> About
-                          </h5>
+                        <div className="p-4 bg-white rounded shadow-sm h-100 border" style={{ borderWidth: "0.1rem" }}>
+                          <h5 className="fw600 mb2">About</h5>
                           <p
                             className="text mb0"
                             style={{ whiteSpace: "pre-line", lineHeight: "1.6" }}
@@ -188,10 +171,8 @@ export default function ServiceDetail3({ service, loading }) {
                       {/* Capabilities */}
                       {data?.capabilities && (
                         <div className="col-md-6">
-                          <div className="p-4 bg-white rounded shadow-sm h-100">
-                            <h6 className="fw600 mb2 d-flex align-items-center">
-                              <i className="fas fa-cogs me-2 text-success"></i> Capabilities
-                            </h6>
+                          <div className="p-4 bg-white rounded shadow-sm h-100 border" style={{ borderWidth: "0.1rem" }}>
+                            <h6 className="fw600 mb2">Capabilities</h6>
                             <ul className="list-unstyled mb0" style={{ lineHeight: "1.4" }}>
                               <li>High-speed DDR/USB/Ethernet routing with impedance control</li>
                               <li>RF/BLE/Wi-Fi layout with ground stitching and matching</li>
@@ -206,10 +187,8 @@ export default function ServiceDetail3({ service, loading }) {
                       {/* Tools */}
                       {data?.tools && (
                         <div className="col-md-6">
-                          <div className="p-4 bg-white rounded shadow-sm h-100">
-                            <h6 className="fw600 mb3 d-flex align-items-center">
-                              <i className="fas fa-wrench me-2 text-warning"></i> Tools
-                            </h6>
+                          <div className="p-4 bg-white rounded shadow-sm h-100 border" style={{ borderWidth: "0.1rem" }}>
+                            <h6 className="fw600 mb3">Tools</h6>
                             <div className="d-flex flex-wrap gap-2">
                               {["Altium Designer", "KiCad", "OrCAD (on request)"].map((tool, i) => (
                                 <span
@@ -228,10 +207,8 @@ export default function ServiceDetail3({ service, loading }) {
                       {/* Additional Info */}
                       {data?.other1 && (
                         <div className="col-md-6">
-                          <div className="p-4 bg-white rounded shadow-sm h-100">
-                            <h6 className="fw600 mb2 d-flex align-items-center">
-                              <i className="fas fa-lightbulb me-2 text-info"></i> Board types
-                            </h6>
+                          <div className="p-4 bg-white rounded shadow-sm h-100 border" style={{ borderWidth: "0.1rem" }}>
+                            <h6 className="fw600 mb2">Board types</h6>
                             <ul className="list-unstyled mb0" style={{ lineHeight: "1.4" }}>
                               <li>2–8 layers, HDI (on request)</li>
                               <li>Rigid / Rigid-Flex</li>
@@ -240,14 +217,11 @@ export default function ServiceDetail3({ service, loading }) {
                         </div>
                       )}
 
-                      {/* More Details */}
                       {/* Deliverables */}
                       {data?.deliverables && (
                         <div className="col-md-6">
-                          <div className="p-4 bg-white rounded shadow-sm h-100">
-                            <h6 className="fw600 mb3 d-flex align-items-center">
-                              <i className="fas fa-box-open me-2 text-success"></i> Deliverables
-                            </h6>
+                          <div className="p-4 bg-white rounded shadow-sm h-100 border" style={{ borderWidth: "0.1rem" }}>
+                            <h6 className="fw600 mb3">Deliverables</h6>
                             <div className="d-flex flex-wrap gap-2">
                               {["Schematics", "PCB files", "Gerbers", "BoM", "Fab & Assy files"].map(
                                 (item, i) => (
@@ -265,14 +239,10 @@ export default function ServiceDetail3({ service, loading }) {
                         </div>
                       )}
 
-
-
                       {data?.other2 && (
                         <div className="col-md-6">
-                          <div className="p-4 bg-white rounded shadow-sm h-100">
-                            <h6 className="fw600 mb2">
-                              <i className="fas fa-folder-open me-2 text-danger"></i> More Details
-                            </h6>
+                          <div className="p-4 bg-white rounded shadow-sm h-100 border" style={{ borderWidth: "0.1rem" }}>
+                            <h6 className="fw600 mb2">More Details</h6>
                             <p
                               className="text mb0"
                               style={{ whiteSpace: "pre-line", lineHeight: "1.5" }}
@@ -285,35 +255,30 @@ export default function ServiceDetail3({ service, loading }) {
 
                       {/* Static Info Cards */}
                       <div className="col-md-4">
-                        <div className="p-4 bg-white rounded shadow-sm h-100">
-                          <h6 className="fw600 mb2">
-                            <i className="fas fa-mobile-alt me-2 text-purple"></i> App type
-                          </h6>
+                        <div className="p-4 bg-white rounded shadow-sm h-100 border" style={{ borderWidth: "0.1rem" }}>
+                          <h6 className="fw600 mb2">App type</h6>
                           <p className="text mb0">Business, Food &amp; Drink</p>
                           <p className="text mb0">Graphics &amp; Design</p>
                         </div>
                       </div>
 
                       <div className="col-md-4">
-                        <div className="p-4 bg-white rounded shadow-sm h-100">
-                          <h6 className="fw600 mb2">
-                            <i className="fas fa-pencil-ruler me-2 text-secondary"></i> Design tools
-                          </h6>
+                        <div className="p-4 bg-white rounded shadow-sm h-100 border" style={{ borderWidth: "0.1rem" }}>
+                          <h6 className="fw600 mb2">Design tools</h6>
                           <p className="text mb0">Adobe XD, Figma</p>
                           <p className="text mb0">Adobe Photoshop</p>
                         </div>
                       </div>
 
                       <div className="col-md-4">
-                        <div className="p-4 bg-white rounded shadow-sm h-100">
-                          <h6 className="fw600 mb2">
-                            <i className="fas fa-desktop me-2 text-primary"></i> Device
-                          </h6>
+                        <div className="p-4 bg-white rounded shadow-sm h-100 border" style={{ borderWidth: "0.1rem" }}>
+                          <h6 className="fw600 mb2">Device</h6>
                           <p className="text mb0">Mobile, Desktop</p>
                         </div>
                       </div>
                     </div>
                   </div>
+
 
                 </div>
               </div>
@@ -329,50 +294,46 @@ export default function ServiceDetail3({ service, loading }) {
                             style={{ maxHeight: "600px", minHeight: "400px" }}
                           >
                             <h5 className="mb20 text-center">PCB Freelancers</h5>
-
                             <div className="flex-grow-1">
-                              {sidebarList
-                                .sort(() => 0.5 - Math.random()) // shuffle array
-                                .slice(0, 4) // pick 3
-                                .map((f, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="d-flex align-items-center mb15 pb15 bdrb1"
-                                  >
-                                    {/* Avatar */}
-                                    <img
-                                      className="rounded-circle me-3"
-                                      src={f.avatar}
-                                      alt={f.name}
-                                      width="50"
-                                      height="50"
-                                    />
+                              {shuffled.map((f, idx) => (
+                                <div
+                                  key={idx}
+                                  className="d-flex align-items-center mb15 pb15 bdrb1"
+                                >
+                                  {/* Avatar */}
+                                  <img
+                                    className="rounded-circle me-3"
+                                    src={f.avatar}
+                                    alt={f.name}
+                                    width="50"
+                                    height="50"
+                                  />
 
-                                    {/* Details */}
-                                    <div className="flex-grow-1">
-                                      <h6 className="mb5">{f.name}</h6>
-                                      <p className="fz14 fw500 mb2">{f.success}% Success Rate</p>
-                                      <p className="text fz14 mb0">{f.location}</p>
-                                    </div>
-
-                                    {/* Action Button */}
-                                    <button
-                                      className="px-3 py-1 rounded-pill"
-                                      style={{
-                                        backgroundColor: "#2563eb",
-                                        color: "#fff",
-                                        border: "none",
-                                        cursor: "pointer",
-                                        fontSize: "13px",
-                                        fontWeight: "500",
-                                        whiteSpace: "nowrap",
-                                      }}
-                                      onClick={() => navigate(`/freelancer-single/${f.id}`)}
-                                    >
-                                      View
-                                    </button>
+                                  {/* Details */}
+                                  <div className="flex-grow-1">
+                                    <h6 className="mb5">{f.name}</h6>
+                                    <p className="fz14 fw500 mb2">{f.success}% Success Rate</p>
+                                    <p className="text fz14 mb0">{f.location}</p>
                                   </div>
-                                ))}
+
+                                  {/* Action Button */}
+                                  <button
+                                    className="px-3 py-1 rounded-pill"
+                                    style={{
+                                      backgroundColor: "#2563eb",
+                                      color: "#fff",
+                                      border: "none",
+                                      cursor: "pointer",
+                                      fontSize: "13px",
+                                      fontWeight: "500",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                    onClick={() => navigate(`/freelancer-single/${f.id}`)}
+                                  >
+                                    View
+                                  </button>
+                                </div>
+                              ))}
                             </div>
 
                             {/* View all button */}

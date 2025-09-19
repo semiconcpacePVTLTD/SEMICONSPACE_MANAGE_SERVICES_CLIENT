@@ -10,8 +10,9 @@ export default function BrowserCategoryCard3({ data }) {
         <div className="details ml40">
           <p className="mb-0 text">{data.skill} experts</p>
           <h5 className="title">
-            <Link to="/project-1">{data.title}</Link>
+            <span style={{ cursor: "default" }}>{data.title}</span>
           </h5>
+
         </div>
       </div>
     </>

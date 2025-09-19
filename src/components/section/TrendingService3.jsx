@@ -17,13 +17,13 @@ export default function TrendingService3({ services }) {
   useEffect(() => {
     setShowSwiper(true);
   }, []);
-  
+
   // Normalize backend services to card schema
   const rawServices = Array.isArray(services)
     ? services
     : services?.success && Array.isArray(services?.data)
-    ? services.data
-    : [];
+      ? services.data
+      : [];
 
   const normalized = rawServices.map((svc) => {
     const gallery = Array.isArray(svc?.imgURLs) && svc.imgURLs.length ? svc.imgURLs : null;
@@ -69,21 +69,7 @@ export default function TrendingService3({ services }) {
               </div>
             </div>
           </div>
-          <div className="row justify-content-center">
-            <div className="col-auto">
-              <button className="swiper__btn btn__prev__011">
-                <i className="far fa-arrow-left-long" />
-              </button>
-            </div>
-            <div className="col-auto">
-              <div className="swiper__pagination swiper__pagination__011"></div>
-            </div>
-            <div className="col-auto">
-              <button className="swiper__btn btn__next__011">
-                <i className="far fa-arrow-right-long" />
-              </button>
-            </div>
-          </div>
+
           <div className="row align-items-center">
             <div className="col-lg-12">
               {showSwiper && count > 0 && (
@@ -130,6 +116,24 @@ export default function TrendingService3({ services }) {
               )}
             </div>
           </div>
+
+          {/* ⬇️ Navigation & Pagination moved here */}
+          <div className="row justify-content-center mt-4">
+            <div className="col-auto">
+              <button className="swiper__btn btn__prev__011">
+                <i className="far fa-arrow-left-long" />
+              </button>
+            </div>
+            <div className="col-auto">
+              <div className="swiper__pagination swiper__pagination__011"></div>
+            </div>
+            <div className="col-auto">
+              <button className="swiper__btn btn__next__011">
+                <i className="far fa-arrow-right-long" />
+              </button>
+            </div>
+          </div>
+
         </div>
       </section>
     </>

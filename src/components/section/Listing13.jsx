@@ -120,22 +120,28 @@ export default function Listing13({ freelancers = [], isLoading = false, skeleto
     <>
       <section className="pt30 pb90">
         <div className="container">
-<ListingOption6 freelancers={normalized} />
+          <ListingOption6 freelancers={normalized} />
           <div className="row">
             {isLoading
               ? Array.from({ length: skeletonCount }).map((_, i) => (
-                  <div key={i} className="col-md-6 col-lg-4 col-xl-3">
-                    <SkeletonCard />
-                  </div>
-                ))
-              : filtered.map((item, i) => (
+                <div key={i} className="col-md-6 col-lg-4 col-xl-3">
+                  <SkeletonCard />
+                </div>
+              ))
+              : filtered.length === 0 ? (
+                <div className="col-12 text-center">
+                  <p>No Freelancer found at the moment</p>
+                </div>
+              ) : (
+                filtered.map((item, i) => (
                   <div key={i} className="col-md-6 col-lg-4 col-xl-3">
                     <FreelancerCard1 data={item} />
                   </div>
-                ))}
+                ))
+              )}
           </div>
           <div className="row mt30">
-<Pagination1 totalItems={filtered.length} itemsPerPage={12} />
+            <Pagination1 totalItems={filtered.length} itemsPerPage={12} />
           </div>
         </div>
       </section>

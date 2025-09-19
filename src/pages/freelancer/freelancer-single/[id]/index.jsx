@@ -47,7 +47,7 @@ export default function FreelancerPageSingle11() {
   return (
     <>
       <MetaComponent meta={metadata} />
-      <Breadcumb10 path={["Home", "Services", "Design & Creative"]} />
+      <Breadcumb10 path={["Home", "Services"]} />
       {loading ? (
         <section className="pt30 pb90"><div className="container"><p>Loading...</p></div></section>
       ) : (
