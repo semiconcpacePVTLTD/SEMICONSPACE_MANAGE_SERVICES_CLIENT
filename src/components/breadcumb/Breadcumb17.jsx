@@ -32,7 +32,13 @@ export default function Breadcumb17({ data: apiData }) {
                   <div className="list-meta d-sm-flex align-items-center mt30">
                     <a className="position-relative freelancer-single-style">
                       <span className="online" />
-                      <img className="rounded-circle w-100 wa-sm mb15-sm" src={img} alt="Freelancer Photo" />
+                      <img
+  className="rounded-circle w-200 mb15-sm"
+  src={img}
+  alt="Freelancer Photo"
+  style={{ maxHeight: "150px", objectFit: "cover" }}
+/>
+
                     </a>
                     <div className="ml20 ml0-xs">
                       <h5 className="title mb-1">{name}</h5>
