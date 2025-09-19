@@ -125,73 +125,79 @@ export default function HighestRated18() {
         </div>
         <div className="row">
           <div className="col-lg-12">
-            <div className="position-relative">
-              {showSwiper && freelancers.length > 0 && (
-                <Swiper
-                  slidesPerView={4}
-                  spaceBetween={30}
-                  navigation={{
-                    prevEl: ".unique-9-pre",
-                    nextEl: ".unique-9-next",
-                  }}
-                  modules={[Navigation, Pagination]}
-                  className="mySwiper"
-                  loop={true}
-                  breakpoints={{
-                    0: {
-                      slidesPerView: 1,
-                    },
-                    768: {
-                      slidesPerView: 2,
-                    },
-                    992: {
-                      slidesPerView: 3,
-                    },
-                    1200: {
-                      slidesPerView: 4,
-                    },
-                  }}
-                >
-                  {shuffledFreelancers.map((elm, i) => (
-                    <SwiperSlide key={elm.id || i}>
-                      <div className="item">
-                        <div className="feature-style2 mb30">
-                          <div className="feature-img bdrs12">
-                            <img
-                              className="bdrs12 w-100"
-                              src={elm.imageSrc}
-                              alt={`${elm.name} avatar`}
-                            />
-                          </div>
-                          <div className="feature-content pt15">
-                            <h5 className="title mb-2">
-                              {elm.name}{" "}
-                              <span className="float-end fz15">
-                                <i className="fas fa-star fz10 pr10"></i>
-                                {elm.rating}
-                              </span>
-                            </h5>
-                            <p className="text fz15">{elm.role}</p>
+            {freelancers.length === 0 ? (
+              <div className="text-center py-5">
+                <p>No Freelancer found at the moment</p>
+              </div>
+            ) : (
+              <div className="position-relative">
+                {showSwiper && (
+                  <Swiper
+                    slidesPerView={4}
+                    spaceBetween={30}
+                    navigation={{
+                      prevEl: ".unique-9-pre",
+                      nextEl: ".unique-9-next",
+                    }}
+                    modules={[Navigation, Pagination]}
+                    className="mySwiper"
+                    loop={true}
+                    breakpoints={{
+                      0: {
+                        slidesPerView: 1,
+                      },
+                      768: {
+                        slidesPerView: 2,
+                      },
+                      992: {
+                        slidesPerView: 3,
+                      },
+                      1200: {
+                        slidesPerView: 4,
+                      },
+                    }}
+                  >
+                    {shuffledFreelancers.map((elm, i) => (
+                      <SwiperSlide key={elm.id || i}>
+                        <div className="item">
+                          <div className="feature-style2 mb30">
+                            <div className="feature-img bdrs12">
+                              <img
+                                className="bdrs12 w-100"
+                                src={elm.imageSrc}
+                                alt={`${elm.name} avatar`}
+                              />
+                            </div>
+                            <div className="feature-content pt15">
+                              <h5 className="title mb-2">
+                                {elm.name}{" "}
+                                <span className="float-end fz15">
+                                  <i className="fas fa-star fz10 pr10"></i>
+                                  {elm.rating}
+                                </span>
+                              </h5>
+                              <p className="text fz15">{elm.role}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </SwiperSlide>
-                  ))}
-                </Swiper>
-              )}
-              <button
-                type="button"
-                className="prev-btn pre-slide3 unique-9-pre"
-              >
-                <i className="far fa-chevron-left" />
-              </button>
-              <button
-                type="button"
-                className="next-btn next-slide3 unique-9-next"
-              >
-                <i className="far fa-chevron-right" />
-              </button>
-            </div>
+                      </SwiperSlide>
+                    ))}
+                  </Swiper>
+                )}
+                <button
+                  type="button"
+                  className="prev-btn pre-slide3 unique-9-pre"
+                >
+                  <i className="far fa-chevron-left" />
+                </button>
+                <button
+                  type="button"
+                  className="next-btn next-slide3 unique-9-next"
+                >
+                  <i className="far fa-chevron-right" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
