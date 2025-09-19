@@ -52,25 +52,6 @@ export default function TrendingService3({ services, title = "Trending Services"
       <section className="pt-0">
         <div className="container">
           <div className="row align-items-center">
-            <div className="col-lg-9 wow fadeInUp">
-              <div className="main-title">
-                <h2 className="title">Trending Services</h2>
-                <p className="paragraph">
-                  Aliquam lacinia diam quis lacus euismod
-                </p>
-              </div>
-            </div>
-            <div className="col-lg-3">
-              <div className="text-start text-lg-end mb-4 mb-lg-3">
-                <Link className="ud-btn2" to="/service-2">
-                  All Services
-                  <i className="fal fa-arrow-right-long" />
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="row align-items-center">
             <div className="col-lg-12">
               {showSwiper && count > 0 && (
                 <Swiper
@@ -114,23 +95,6 @@ export default function TrendingService3({ services, title = "Trending Services"
                   ))}
                 </Swiper>
               )}
-            </div>
-          </div>
-
-          {/* ⬇️ Navigation & Pagination moved here */}
-          <div className="row justify-content-center mt-4">
-            <div className="col-auto">
-              <button className="swiper__btn btn__prev__011">
-                <i className="far fa-arrow-left-long" />
-              </button>
-            </div>
-            <div className="col-auto">
-              <div className="swiper__pagination swiper__pagination__011"></div>
-            </div>
-            <div className="col-auto">
-              <button className="swiper__btn btn__next__011">
-                <i className="far fa-arrow-right-long" />
-              </button>
             </div>
           </div>
 
