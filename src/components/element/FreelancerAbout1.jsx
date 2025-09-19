@@ -1,16 +1,243 @@
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import Swal from "sweetalert2";
 
 export default function FreelancerAbout1({ data }) {
   const location = data?.profile_details?.location ?? data?.profile?.location ?? "N/A";
-  const experience = data?.experience ?? "N/A";
-  const rating = data?.rating ?? "N/A";
-  const skills = data?.skills ?? [];
-  const reviews = data?.reviews ?? [];
-  const completedProjects = data?.completed_projects ?? "N/A";
-  const hourlyRate = data?.profile_details?.hourly_rate
+  const hourlyRate = data?.profile_details?.hourly_rate;
   const MemberSince = data?.profile_details?.created_at ?? "N/A";
-  const img = data?.profile?.profile_image || "/images/team/fl-1.png";
-  console.log("FreelancerAbout1 data:", data);
+
+
+  // Modal + form state (only project creation now)
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Create form
+  const [projectTitle, setProjectTitle] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const [serviceType, setServiceType] = useState("");
+  const [serviceOptions, setServiceOptions] = useState([]); // normalized strings
+  const [loadingServices, setLoadingServices] = useState(false);
+  const hasFetchedServices = useRef(false); // guard double calls (StrictMode / re-renders)
+
+  // Get role_ids from localStorage.auth in a robust way
+  function getRoleIdsFromStorage() {
+    try {
+      const raw = localStorage.getItem("auth");
+      if (!raw) return [];
+      const auth = JSON.parse(raw);
+      const val =
+        auth?.data?.profile?.role_id ??
+        auth?.profile?.role_id ??
+        auth?.data?.role_id ??
+        auth?.role_id ?? [];
+      if (Array.isArray(val)) return val.map((v) => Number(v)).filter((v) => !Number.isNaN(v));
+      if (typeof val === "number") return [val];
+      if (typeof val === "string") {
+        return val
+          .split(/[\s,;]+/)
+          .map((v) => Number(v))
+          .filter((v) => !Number.isNaN(v));
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // Get userId from localStorage.auth in a robust way
+  function getUserIdFromStorage() {
+    try {
+      const raw = localStorage.getItem("auth");
+      if (!raw) return null;
+      const auth = JSON.parse(raw);
+      return (
+        auth?.data?.userId ||
+        auth?.userId ||
+        auth?.data?.user_id ||
+        auth?.user_id ||
+        auth?.data?.profile?.user_id ||
+        auth?.profile?.user_id ||
+        null
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Normalize various service payload shapes to [string]
+  function normalizeServices(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+    if (typeof raw === "string") {
+      return raw
+        .split(/[\s,;|]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    if (typeof raw === "object") {
+      // If backend returns object or set-like structure, prefer keys; if keys empty, try values
+      const keys = Object.keys(raw || {});
+      if (keys.length > 0) return keys.map(String);
+      const vals = Object.values(raw || {});
+      return vals.map(String).filter(Boolean);
+    }
+    return [];
+  }
+
+  async function fetchServicesOnce() {
+    if (hasFetchedServices.current) return;
+    hasFetchedServices.current = true; // set early to avoid race/double
+    setLoadingServices(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const resp = await fetch("http://192.168.1.30:8002/profile-service/getdetails", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const json = await resp.json().catch(() => ({}));
+      const servicesRaw =
+        json?.data?.profile_details?.services ??
+        json?.profile_details?.services ??
+        json?.data?.services ??
+        json?.services ?? null;
+
+      let options = normalizeServices(servicesRaw);
+
+      // Fallback to the freelancer data passed to this component
+      if (!options.length) {
+        const freelancerServices = data?.profile_details?.services ?? data?.services;
+        options = normalizeServices(freelancerServices);
+      }
+
+      setServiceOptions(options);
+    } catch (e) {
+      // Fallback: try from passed-in freelancer data
+      const freelancerServices = data?.profile_details?.services ?? data?.services;
+      const options = normalizeServices(freelancerServices);
+      setServiceOptions(options);
+    } finally {
+      setLoadingServices(false);
+    }
+  }
+
+  function handleOpenModal() {
+    const roles = getRoleIdsFromStorage();
+    const isCustomer = roles.includes(1);
+    if (!isCustomer) {
+      Swal.fire({
+        icon: "warning",
+        title: "Access restricted",
+        text: "Only Customers can create a project.",
+      });
+      return;
+    }
+    // Reset selections so the form shows defaults on each open
+    setServiceType("");
+    setIsModalOpen(true);
+    // load services once when opening modal
+    fetchServicesOnce();
+  }
+
+  function handleCloseModal() {
+    setIsModalOpen(false);
+  }
+
+  async function handleCreateProject(e) {
+    e?.preventDefault?.();
+
+    const trimmedTitle = projectTitle?.trim();
+    const trimmedDesc = projectDescription?.trim();
+
+    if (!trimmedTitle || !trimmedDesc || !serviceType) {
+      Swal.fire({ icon: "error", title: "Missing details", text: "Please fill Project Title, Description and select Service Type." });
+      return;
+    }
+
+    const host = import.meta.env.VITE_BACKEND_HOST_ADMIN;
+    const port = import.meta.env.VITE_BACKEND_PROJECT_PORT;
+    if (!host || !port) {
+      Swal.fire({ icon: "error", title: "Configuration error", text: "Project service host/port is not configured." });
+      return;
+    }
+
+    // Read auth info from localStorage
+    let auth = {};
+    try {
+      const raw = localStorage.getItem("auth");
+      auth = raw ? JSON.parse(raw) : {};
+    } catch (_) {
+      auth = {};
+    }
+
+    const token = localStorage.getItem("access_token");
+    const userId = getUserIdFromStorage();
+    const userName = auth?.data?.name || auth?.name || localStorage.getItem("name") || "";
+    const userEmail = auth?.data?.email || auth?.email || localStorage.getItem("email") || "";
+
+    const freelancerId =
+      data?.profile?.user_id || data?.profile_details?.user_id || data?.user_id || null;
+    const freelancerName =
+      data?.profile_details?.full_name || data?.profile?.name || data?.author?.name || data?.name || "";
+    const freelancerEmail =
+      data?.profile_details?.email || data?.profile?.email || data?.email || "";
+
+    if (!userId || !freelancerId) {
+      Swal.fire({ icon: "error", title: "Missing user info", text: "Please login again and ensure freelancer details are available." });
+      return;
+    }
+
+    const base = `http://${host}:${port}`;
+    const body = {
+      userId: String(userId),
+      userName: String(userName), // as per backend key
+      userEmail: String(userEmail),
+      freelancerId: String(freelancerId),
+      freelancerName: String(freelancerName), // as per backend key
+      freelancerEmail: String(freelancerEmail),
+      projectTitle: trimmedTitle,
+      projectDescription: trimmedDesc,
+      serviceType: serviceType,
+      createdBy: String(userId),
+    };
+
+    try {
+      const resp = await fetch(`${base}/project-service/createProject`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        const msg = json?.message || `Failed to create project (status ${resp.status})`;
+        Swal.fire({ icon: "error", title: "Create failed", text: msg });
+        return;
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Project created",
+        text: "Project created successfully. You can raise the ticket from your dashboard.",
+      });
+
+      // Close modal and reset fields
+      setIsModalOpen(false);
+      setProjectTitle("");
+      setProjectDescription("");
+      setServiceType("");
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "Network error", text: "Unable to create project. Please try again." });
+    }
+  }
+
+
+
   return (
     <>
       <div className="price-widget pt25 bdrs8">
@@ -56,26 +283,142 @@ export default function FreelancerAbout1({ data }) {
             <span>Fluent</span>
           </a>
         </div>
-        <div className="d-grid">
-          <Link to="/contact" className="ud-btn btn-thm">
-            Schedule meeting
-            <i
-              className="fal fa-video-camera"
-              style={{ marginLeft: "8px", transform: "rotate(0deg)" }}
-            />
-          </Link>
-        </div>
-        <div className="d-grid mt-3">
-          <Link to="/contact" className="ud-btn btn-thm">
-            Initiate Project
-            <i
-              className="fal fa-rocket"
-              style={{ marginLeft: "8px", transform: "rotate(0deg)" }}
-            />
-          </Link>
-        </div>
 
+        <div
+          className="container my-4 p-4"
+          style={{
+            border: "0.1rem solid #ccc",
+            borderRadius: "8px",
+          }}
+        >
+          {/* <h4 className="mb-4 text-center" style={{ color: "#6c757d", fontWeight: "600" }}>
+            INITIATE THE PROJECT
+          </h4> */}
+
+          <div className="d-grid mb-3">
+            <Link to="/contact" className="ud-btn btn-thm">
+              Schedule Meeting
+              <i className="fal fa-video-camera" style={{ marginLeft: "8px", transform: "rotate(0deg)" }} />
+            </Link>
+          </div>
+
+          <div className="d-grid">
+            <button
+              type="button"
+              className="ud-btn btn-thm d-flex align-items-center justify-content-center"
+              onClick={handleOpenModal}
+            >
+              Initiate the project
+              <i className="fal fa-rocket ms-2" style={{ transform: "rotate(0deg)" }} />
+            </button>
+          </div>
+        </div>
       </div>
+
+      {isModalOpen && (
+        <div
+          className="modal-backdrop"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 1050,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+          }}
+          onClick={handleCloseModal}
+        >
+          <div
+            className="modal-content bdrs8"
+            style={{ background: "#fff", width: "100%", maxWidth: 600, padding: 24, position: "relative" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <h5 className="m-0">Create a Project</h5>
+              <button className="btn btn-sm" onClick={handleCloseModal} aria-label="Close">
+                <i className="fal fa-times" />
+              </button>
+            </div>
+
+            {/* Guidance note */}
+            <div
+              className="mb-3"
+              style={{
+                background: "#f8f9fa",
+                border: "1px solid #e9ecef",
+                borderRadius: 6,
+                padding: 12,
+                color: "#6c757d",
+                fontSize: 14,
+              }}
+            >
+              After creating a project here, you can raise the ticket from your dashboard.
+            </div>
+
+            {/* Create Project Form */}
+            <div className="mb-3">
+              <label className="form-label">Project Title</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Design a PCB layout"
+                value={projectTitle}
+                onChange={(e) => setProjectTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Project Description</label>
+              <textarea
+                className="form-control"
+                rows={4}
+                placeholder="Need a 2-layer PCB design for power distribution"
+                value={projectDescription}
+                onChange={(e) => setProjectDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Service Type</label>
+              <select
+                className="form-select"
+                value={serviceType}
+                onChange={(e) => setServiceType(e.target.value)}
+                disabled={loadingServices}
+              >
+                {/* Default option */}
+                <option value="" disabled>
+                  Select Service Type
+                </option>
+
+                {/* Loading state */}
+                {loadingServices && <option disabled>Loading...</option>}
+
+                {/* No services */}
+                {!loadingServices && serviceOptions.length === 0 && (
+                  <option disabled>No services</option>
+                )}
+
+                {/* Services list */}
+                {!loadingServices &&
+                  serviceOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="d-flex justify-content-end gap-2 mt-4">
+              <button className="ud-btn btn-thm" onClick={handleCreateProject} type="button">
+                Create Project
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
