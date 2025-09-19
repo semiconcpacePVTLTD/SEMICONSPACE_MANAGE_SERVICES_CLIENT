@@ -19,6 +19,7 @@ export default function ServicePage2() {
   const { services } = location.state || {}; // may be undefined
 
   const [serviceData, setServiceData] = useState(services ?? null);
+  const [loading, setLoading] = useState(!services); // loading if no services provided
 
   useEffect(() => {
     if (services) return; // already provided via navigation
@@ -28,12 +29,15 @@ export default function ServicePage2() {
 
     async function load() {
       try {
+        setLoading(true);
         const res = await fetch(API_URL, { signal: controller.signal });
         if (!res.ok) throw new Error(`Request failed: ${res.status}`);
         const json = await res.json();
         if (!ignore) setServiceData(json);
       } catch (err) {
         if (!ignore) setServiceData({ success: false, message: String(err), data: [] });
+      } finally {
+        if (!ignore) setLoading(false);
       }
     }
 
@@ -49,7 +53,7 @@ export default function ServicePage2() {
       <MetaComponent meta={metadata} />
       <Breadcumb3 path={["Home", "Services"]} />
       <Breadcumb4 />
-      <TrendingService7 services={serviceData ?? services ?? []} title="Our Popular Services" link="" />
+      <TrendingService7 services={serviceData ?? services ?? []} title="Our Popular Services" link="" isLoading={loading} />
     </>
   );
 }

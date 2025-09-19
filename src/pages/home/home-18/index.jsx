@@ -22,6 +22,7 @@ export default function HomePage18() {
   useEffect(() => {
     const fetchServices = async () => {
       try {
+        setLoading(true);
         const response = await fetch(
           `http://${import.meta.env.VITE_BACKEND_HOST_ADMIN}:${import.meta.env.VITE_BACKEND_CATALOG_PORT}/catalog-service/listServices`
         );
@@ -36,6 +37,8 @@ export default function HomePage18() {
         if (target) setSelectedService(target);
       } catch (err) {
         console.error("Error fetching services:", err);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -49,7 +52,7 @@ export default function HomePage18() {
       <div className="body_content">
         <Hero18 services={services} />
         <BrowserCategory3 />
-        <TrendingService3 services={services} />
+        <TrendingService3 services={services} isLoading={loading} />
         <NeedSomething18 />
         {/* <CounterInfo1 /> */}
         <HighestRated18 />

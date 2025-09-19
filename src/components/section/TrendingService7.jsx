@@ -6,11 +6,12 @@ import "swiper/css/free-mode";
 import { Navigation, Pagination } from "swiper";
 
 import TrendingServiceCard1 from "../card/TrendingServiceCard1";
+import TrendingServiceCardSkeleton from "../card/TrendingServiceCardSkeleton";
 
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 
-export default function TrendingService3({ services, title = "Trending Services", link = "/service-2", linkText = "All Services" }) {
+export default function TrendingService3({ services, title = "Trending Services", link = "/service-2", linkText = "All Services", isLoading = false }) {
   console.log("services in trending", services);
 
   const [showSwiper, setShowSwiper] = useState(false);
@@ -51,6 +52,18 @@ export default function TrendingService3({ services, title = "Trending Services"
     <>
       <section className="pt-0">
         <div className="container">
+          <div className="row align-items-center">
+            <div className="col-lg-9 wow fadeInUp">
+              <div className="main-title">
+                <h2 className="title">Services we Offer</h2>
+                <p className="paragraph">
+                  Explore a variety of fresh and creative services tailored to your needs.
+                </p>
+              </div>
+            </div>
+
+          </div>
+
           <div className="row align-items-center">
             <div className="col-lg-12">
               {showSwiper && count > 0 && (
