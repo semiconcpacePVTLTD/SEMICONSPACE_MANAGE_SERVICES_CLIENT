@@ -33,6 +33,15 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
   const handleImageChange = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    // Validate image size (<= 5 MB) and type (PNG/JPG)
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire({ icon: "error", title: "File too large", text: "Max image size is 5 MB." });
+      return;
+    }
+    if (!/^image\/(png|jpe?g)$/i.test(file.type)) {
+      Swal.fire({ icon: "error", title: "Invalid file", text: "Only PNG or JPG images are allowed." });
+      return;
+    }
     setSelectedImageFile(file);
     setSelectedImage(URL.createObjectURL(file));
   };
@@ -43,8 +52,39 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
   const handleMcsDocChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const url = URL.createObjectURL(file);
     setMcsDocFile(file);
-    setMcsDocPreview(URL.createObjectURL(file));
+    setMcsDocPreview(url);
+    // Reflect temp URL in the read-only input for user feedback
+    setProfileDetails((d) => ({ ...d, mcs_incorporation_image: url }));
+  };
+
+  // Common uploader for profile-service
+  const uploadToProfileService = async (file, dirtry) => {
+    const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
+    const url = `${BASE_URL}/profile-service/upload?dirtry=${encodeURIComponent(dirtry)}`;
+    const formData = new FormData();
+    // Backend expects generic file field; adjust if server uses a specific key
+    formData.append("file", file);
+    const res = await axios.post(url, formData, { headers: { "Content-Type": "multipart/form-data" } });
+    const data = res?.data;
+    // Accept common fields: cdn_url, url, location, profile_image
+    const uploadedUrl =
+      data?.cdn_url ||
+      data?.data?.cdn_url ||
+      data?.url ||
+      data?.data?.url ||
+      data?.location ||
+      data?.data?.location ||
+      data?.profile_image ||
+      data?.data?.profile_image ||
+      null;
+
+    if (!uploadedUrl) {
+      const serverMsg = typeof data === "object" ? (data?.message || data?.error || JSON.stringify(data)) : String(data);
+      throw new Error(serverMsg || "Upload did not return a file URL.");
+    }
+    return uploadedUrl;
   };
 
   // Separate API call to upload and persist profile image only
@@ -54,30 +94,15 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
         return Swal.fire({ icon: "info", title: "No image selected", text: "Choose an image first." });
       }
       setPageLoading(true);
-      const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
-      const uploadUrl = `${BASE_URL}/profile-service/upload-image`;
-      const formData = new FormData();
-      formData.append("profile_image", selectedImageFile);
-      const uploadRes = await axios.post(uploadUrl, formData);
-      const data = uploadRes?.data;
-      const uploadedUrl = data?.url || data?.data?.url || data?.profile_image || data?.data?.profile_image || data?.location || data?.data?.location || null;
-      if (!uploadedUrl) throw new Error("Upload did not return an image URL.");
+      // Upload only. Do not call updateuser; success is determined by upload response
+      const uploadedUrl = await uploadToProfileService(selectedImageFile, "Manage_Service_Profile_IMG");
 
-      // Persist only the image change
-      const payload = { profile: { user_id: form.user_id, profile_image: uploadedUrl } };
-      const config = { headers: { "Content-Type": "application/json" } };
-      const updateUrl = `${BASE_URL}/profile-service/updateuser`;
-      const res = await axios.put(updateUrl, payload, config);
-      const ok = res?.data?.success ?? true;
-      if (ok) {
-        setForm((s) => ({ ...s, profile_image: uploadedUrl }));
-        initialRef.current = { ...(initialRef.current || {}), profile_image: uploadedUrl };
-        setSelectedImage(uploadedUrl);
-        setSelectedImageFile(null);
-        Swal.fire({ icon: "success", title: "Profile image updated" });
-      } else {
-        Swal.fire({ icon: "error", title: "Update failed", text: res?.data?.message || "Please try again." });
-      }
+      // Reflect uploaded URL locally and notify user
+      setForm((s) => ({ ...s, profile_image: uploadedUrl }));
+      initialRef.current = { ...(initialRef.current || {}), profile_image: uploadedUrl };
+      setSelectedImage(uploadedUrl);
+      setSelectedImageFile(null);
+      Swal.fire({ icon: "success", title: "Image uploaded" });
     } catch (err) {
       console.error("[ProfileDetails] profile image upload error", err);
       const status = err?.response?.status;
@@ -200,62 +225,62 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
   const isMcaReadOnly = !!profile_details?.mcs_verified;
   const isGstinReadOnly = !!profile_details?.gstin_verified;
 
-  const handleCompanyVerificationSubmit = async () => {
-    try {
-      setPageLoading(true);
-      const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
-      let uploadedMcsDocUrl = null;
-      if (mcsDocFile) {
-        const uploadUrl = `${BASE_URL}/profile-service/upload-image`;
-        const formData = new FormData();
-        formData.append("file", mcsDocFile);
-        const uploadRes = await axios.post(uploadUrl, formData);
-        const data = uploadRes?.data;
-        uploadedMcsDocUrl = data?.url || data?.data?.url || data?.location || data?.data?.location || data?.profile_image || data?.data?.profile_image || null;
-        if (!uploadedMcsDocUrl) throw new Error("MCA document upload did not return a URL.");
-      }
-      const verificationDetails = {
-        pan_number: profile_details?.pan_number || "",
-        pan_verified: !!profile_details?.pan_verified,
-        mcs_incorporation_no: profile_details?.mcs_incorporation_no || "",
-        mcs_incorporation_image: (uploadedMcsDocUrl ?? profile_details?.mcs_incorporation_image) || "",
-        mcs_verified: !!profile_details?.mcs_verified,
-        gstin_number: profile_details?.gstin_number || "",
-        gstin_verified: !!profile_details?.gstin_verified,
-        verified: !!profile_details?.verified,
-        remarks: profile_details?.remarks || "",
+const handleCompanyVerificationSubmit = async () => {
+  try {
+    setPageLoading(true);
+    const BASE_URL = `http://${import.meta.env.VITE_BACKEND_HOST}:${import.meta.env.VITE_BACKEND_PROFILE_PORT}`;
+
+    const verificationDetails = {
+      user_id: form.user_id, // 👈 directly pass user_id here
+      pan_number: profile_details?.pan_number || "",
+      mcs_incorporation_no: profile_details?.mcs_incorporation_no || "",
+      gstin_number: profile_details?.gstin_number || "",
+    };
+
+    const config = { headers: { "Content-Type": "application/json" } };
+    const url = `${BASE_URL}/profile-service/verification/request`;
+    const res = await axios.post(url, verificationDetails, config); // 👈 send flat object
+
+    const ok = res?.data?.success ?? true;
+    if (ok) {
+      Swal.fire({
+        icon: "success",
+        title: "Company verification updated",
+        text: res?.data?.message || "Details saved."
+      });
+
+      detailsInitialRef.current = {
+        ...(detailsInitialRef.current || {}),
+        ...verificationDetails,
       };
-      const payload = { profile: { user_id: form.user_id }, profile_details: verificationDetails };
-      const config = { headers: { "Content-Type": "application/json" } };
-      const url = `${BASE_URL}/verification/request`;
-      const res = await axios.put(url, payload, config);
-      const ok = res?.data?.success ?? true;
-      if (ok) {
-        Swal.fire({ icon: "success", title: "Company verification updated", text: res?.data?.message || "Details saved." });
-        // refresh initial details snapshot for verification keys
-        detailsInitialRef.current = {
-          ...(detailsInitialRef.current || {}),
-          ...verificationDetails,
-        };
-        setMcsDocFile(null);
-      } else {
-        Swal.fire({ icon: "error", title: "Update failed", text: res?.data?.message || "Please try again." });
-      }
-    } catch (err) {
-      console.error("[ProfileDetails] company verification update error", err);
-      const status = err?.response?.status;
-      const isNetwork = err?.message?.includes("Network Error") || err?.code === "ECONNABORTED" || (err?.request && !err?.response);
-      if (status === 500) {
-        Swal.fire({ icon: "error", title: "Internal server error", text: "Please try again later." });
-      } else if (isNetwork) {
-        Swal.fire({ icon: "error", title: "Couldn't reach server", text: "Please check your connection or try again later." });
-      } else {
-        Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || err.message || "Something went wrong." });
-      }
-    } finally {
-      setPageLoading(false);
+      setMcsDocFile(null);
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Update failed",
+        text: res?.data?.message || "Please try again."
+      });
     }
-  };
+  } catch (err) {
+    console.error("[ProfileDetails] company verification update error", err);
+    const status = err?.response?.status;
+    const isNetwork =
+      err?.message?.includes("Network Error") ||
+      err?.code === "ECONNABORTED" ||
+      (err?.request && !err?.response);
+
+    if (status === 500) {
+      Swal.fire({ icon: "error", title: "Internal server error", text: "Please try again later." });
+    } else if (isNetwork) {
+      Swal.fire({ icon: "error", title: "Couldn't reach server", text: "Please check your connection or try again later." });
+    } else {
+      Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || err.message || "Something went wrong." });
+    }
+  } finally {
+    setPageLoading(false);
+  }
+};
+
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -467,9 +492,7 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
                   Upload Image
                 </button>
               </div>
-              <p className="text mb-0">
-                Max file size is 1MB, Minimum dimension: 330x300. Allowed: .jpg, .png
-              </p>
+            
             </div>
           </div>
         </div>
@@ -1448,55 +1471,84 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
 </div>
 
       {/* Verification Sections */}
-      {/* Freelancer (role_id 2): PAN only */}
-      {Array.isArray(form.role_id) && form.role_id.includes(2) && (
-        <form className="form-style1" onSubmit={(e) => { e.preventDefault(); handleCompanyVerificationSubmit(); }}>
-          <div className="row">
-            <div className="bdrb1 pb15 mb25"><h6 className="list-title">PAN Verification</h6></div>
-            <div className="col-sm-6">
-              <div className="mb20">
-                <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
-                  PAN Number
-                  {profile_details?.pan_verified && (
-                    <i className="fas fa-check-circle text-success ml10" title="Verified" />
-                  )}
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="ABCDE1234F"
-                  value={profile_details?.pan_number || ""}
-                  readOnly={isPanReadOnly}
-                  onChange={(e) => setProfileDetails((d) => ({ ...d, pan_number: e.target.value }))}
-                />
-                {/* <div className="form-check mt10">
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    id="panVerifiedOnly"
-                    checked={!!profile_details?.pan_verified}
-                    onChange={(e) => setProfileDetails((d) => ({ ...d, pan_verified: e.target.checked }))}
-                  />
-                  <label htmlFor="panVerifiedOnly" className="form-check-label">PAN Verified</label>
-                </div> */}
-              </div>
-            </div>
-            <div className="col-md-12">
-              <div className="text-start">
-                <button
-                  type="submit"
-                  disabled={!hasVerificationChanges}
-                  className={`ud-btn ${hasVerificationChanges ? "btn-thm" : "btn-secondary"}`}
-                  style={{ cursor: hasVerificationChanges ? "pointer" : "not-allowed", opacity: hasVerificationChanges ? 1 : 0.6 }}
-                >
-                  Request Verification
-                  <i className="fal fa-upload" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </form>
-      )}
+   {/* Freelancer (role_id 2): PAN only */}
+{Array.isArray(form.role_id) && form.role_id.includes(2) && (
+  <div className="form-style1">
+    <div className="row">
+      <div className="bdrb1 pb15 mb25">
+        <h6 className="list-title">PAN Verification</h6>
+      </div>
+      <div className="col-sm-6">
+        <div className="mb20">
+          <label className="heading-color ff-heading fw500 mb10 d-flex align-items-center">
+            PAN Number
+            {profile_details?.pan_verified && (
+              <i className="fas fa-check-circle text-success ml10" title="Verified" />
+            )}
+          </label>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="ABCDE1234F"
+            value={profile_details?.pan_number || ""}
+            readOnly={isPanReadOnly}
+            maxLength={10}
+            style={{ textTransform: "uppercase" }}
+            onChange={(e) => {
+              const value = e.target.value.toUpperCase();
+              setProfileDetails((d) => ({ ...d, pan_number: value }));
+            }}
+          />
+          {/* Error message */}
+          {profile_details?.pan_number &&
+            !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details.pan_number) && (
+              <p className="text-danger mt5">Invalid PAN format (e.g., ABCDE1234F)</p>
+          )}
+        </div>
+      </div>
+      <div className="col-md-12">
+        <div className="text-start">
+          <button
+            type="button"
+            onClick={() => {
+              if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")) {
+                alert("Invalid PAN number. Format: AAAAA9999A");
+                return;
+              }
+              handleCompanyVerificationSubmit();
+            }}
+            disabled={
+              !hasVerificationChanges ||
+              !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
+            }
+            className={`ud-btn ${
+              hasVerificationChanges &&
+              /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
+                ? "btn-thm"
+                : "btn-secondary"
+            }`}
+            style={{
+              cursor:
+                hasVerificationChanges &&
+                /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
+                  ? "pointer"
+                  : "not-allowed",
+              opacity:
+                hasVerificationChanges &&
+                /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(profile_details?.pan_number || "")
+                  ? 1
+                  : 0.6,
+            }}
+          >
+            Request Verification
+            <i className="fal fa-upload" />
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
 
 
    {/* Enterprise-specific fields */}
@@ -1578,8 +1630,22 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
           onChange={(e) => {
             if (e.target.files.length > 0) {
               const file = e.target.files[0];
-              const url = URL.createObjectURL(file);
+              // Validate size (<= 5 MB) and allow png/jpg/jpeg/pdf
+              const isImage = /^image\/(png|jpe?g)$/i.test(file.type);
+              const isPdf = /application\/pdf/i.test(file.type);
+              if (file.size > 5 * 1024 * 1024) {
+                Swal.fire({ icon: "error", title: "File too large", text: "Max file size is 5 MB." });
+                return;
+              }
+              if (!isImage && !isPdf) {
+                Swal.fire({ icon: "error", title: "Invalid file", text: "Allowed types: PNG, JPG, PDF." });
+                return;
+              }
 
+              // Save file to state so Upload Doc button can hit API
+              setMcsDocFile(file);
+
+              const url = URL.createObjectURL(file);
               // Put selected file URL in input
               setMcsDocPreview(url);
               setProfileDetails((d) => ({
@@ -1594,9 +1660,22 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
         <button
           type="button"
           className="ud-btn btn-thm px20 py10 mr10"
-          onClick={() => {
-            if (mcsDocPreview || profile_details?.mcs_incorporation_image) {
-              // Upload action → Swal
+          onClick={async () => {
+            try {
+              if (!mcsDocFile) {
+                // First click → open file chooser
+                document.getElementById("mcaDocInsert").click();
+                return;
+              }
+              setPageLoading(true);
+              // Upload MCA doc via common uploader using dirtry=MCA_License
+              const uploadedUrl = await uploadToProfileService(mcsDocFile, "MCA_License");
+
+              // Persist the uploaded URL into profile_details and clear file state
+              setProfileDetails((d) => ({ ...d, mcs_incorporation_image: uploadedUrl }));
+              setMcsDocPreview(null);
+              setMcsDocFile(null);
+
               Swal.fire({
                 icon: "success",
                 title: "Uploaded!",
@@ -1604,9 +1683,12 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
                 timer: 2000,
                 showConfirmButton: false,
               });
-            } else {
-              // First click → open file chooser
-              document.getElementById("mcaDocInsert").click();
+            } catch (err) {
+              console.error("[ProfileDetails] MCA upload error", err);
+              const msg = err?.response?.data?.message || err?.message || "Upload failed";
+              Swal.fire({ icon: "error", title: "Upload failed", text: msg });
+            } finally {
+              setPageLoading(false);
             }
           }}
         >

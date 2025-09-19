@@ -139,7 +139,8 @@ function App() {
             ) : (
               !pathname.startsWith("/dashboard") &&
               pathname !== "/service-7" &&
-              pathname !== "/invoices" && <Footer />
+              pathname !== "/invoices" &&
+              pathname !== "/wallet" && <Footer />
             )}
 
             {/* bottom to top */}
