@@ -52,14 +52,20 @@ export default function TrendingService3({ services, title = "Trending Services"
       <section className="pt-0">
         <div className="container">
           <div className="row align-items-center">
+            <div className="col-lg-9 wow fadeInUp">
+              <div className="main-title">
+                <h2 className="title">Trending Services</h2>
+                <p className="paragraph">
+                  Aliquam lacinia diam quis lacus euismod
+                </p>
+              </div>
+            </div>
             <div className="col-lg-3">
               <div className="text-start text-lg-end mb-4 mb-lg-3">
-                {link && (
-                  <Link className="ud-btn2" to={link}>
-                    {linkText}
-                    <i className="fal fa-arrow-right-long" />
-                  </Link>
-                )}
+                <Link className="ud-btn2" to="/service-2">
+                  All Services
+                  <i className="fal fa-arrow-right-long" />
+                </Link>
               </div>
             </div>
           </div>
