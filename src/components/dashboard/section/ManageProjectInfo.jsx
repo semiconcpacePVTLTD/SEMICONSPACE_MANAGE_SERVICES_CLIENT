@@ -55,41 +55,97 @@ export default function ManageProjectInfo() {
   const itemsPerPage = 5;
 
   useEffect(() => {
-    const host = import.meta.env.VITE_BACKEND_HOST_ADMIN;
-    const port = import.meta.env.VITE_BACKEND_PROJECT_PORT;
-
-    const userId =
-      getUserIdFromStorage() || "aead429f-6359-40a8-b4f4-0facc7e09b07";
-
-    if (!host || !port || !userId) return;
-
-    const url = `http://${host}:${port}/project-service/userAllProject?userId=${encodeURIComponent(
-      userId
-    )}`;
-
-    let mounted = true;
-    setLoading(true);
-    setError("");
-
-    fetch(url)
-      .then(async (res) => {
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          const msg = data?.message || `Request failed with ${res.status}`;
-          throw new Error(msg);
+    // Build new endpoint based on role: role_id === 1 -> pass userId, else pass freelancerId
+    function getRoleId() {
+      try {
+        const direct = localStorage.getItem("role_id") ?? localStorage.getItem("roleid");
+        if (direct) {
+          try {
+            const parsed = JSON.parse(direct);
+            if (Array.isArray(parsed)) return Number(parsed[0]) || 0;
+            return Number(parsed) || Number(direct) || 0;
+          } catch {
+            return Number(direct) || 0;
+          }
         }
-        return data;
-      })
-      .then((data) => {
-        if (!mounted) return;
-        const list = Array.isArray(data?.projects) ? data.projects : [];
-        setProjects(list);
-      })
-      .catch((err) => {
-        if (!mounted) return;
-        setError(err.message || "Failed to load projects");
-      })
-      .finally(() => mounted && setLoading(false));
+        const raw = localStorage.getItem("auth");
+        if (raw) {
+          const auth = JSON.parse(raw);
+          const val = auth?.data?.user?.role_id ?? auth?.data?.role_id ?? auth?.user?.role_id ?? auth?.role_id ?? 0;
+          if (Array.isArray(val)) return Number(val[0]) || 0;
+          return Number(val) || 0;
+        }
+      } catch {}
+      return 0;
+    }
+
+    const roleId = getRoleId();
+    const userId = getUserIdFromStorage() || "aead429f-6359-40a8-b4f4-0facc7e09b07";
+
+    function getFreelancerIdFromStorage() {
+      try {
+        const direct =
+          localStorage.getItem("freelancerId") ||
+          localStorage.getItem("freelancer_id") ||
+          localStorage.getItem("freelancerUserId");
+        if (direct) return direct;
+        const raw = localStorage.getItem("auth");
+        if (raw) {
+          const auth = JSON.parse(raw);
+          return (
+            auth?.data?.user?.freelancerId ||
+            auth?.data?.user?.freelancer_id ||
+            auth?.user?.freelancerId ||
+            auth?.user?.freelancer_id ||
+            null
+          );
+        }
+      } catch {}
+      return null;
+    }
+
+    const freelancerId = getFreelancerIdFromStorage();
+const paramName = roleId === 1 ? "userId" : "freelancerId";
+const idVal = roleId === 1 ? userId : (freelancerId || userId);
+
+if (!idVal) return;
+
+const url = `http://192.168.1.222:9006/project-service/userFreelancerAllProject?${paramName}=${encodeURIComponent(idVal)}`;
+
+let mounted = true;
+setLoading(true);
+setError("");
+
+fetch(url, {
+  method: "POST", // <-- POST method
+  headers: {
+    "Content-Type": "application/json",
+  },
+  // no body needed since param is in URL
+})
+  .then(async (res) => {
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = data?.message || `Request failed with ${res.status}`;
+      throw new Error(msg);
+    }
+    return data;
+  })
+  .then((data) => {
+    if (!mounted) return;
+    const list = Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.projects)
+      ? data.projects
+      : [];
+    setProjects(list);
+  })
+  .catch((err) => {
+    if (!mounted) return;
+    setError(err.message || "Failed to load projects");
+  })
+  .finally(() => mounted && setLoading(false));
+
 
     return () => {
       mounted = false;
@@ -169,7 +225,12 @@ export default function ManageProjectInfo() {
                       )}
                       {!loading && !error && paginatedProjects.length === 0 && (
                         <tr>
-                          <td colSpan={4}>No projects found.</td>
+                          <td colSpan={4}>
+                            <div className="py-5 d-flex flex-column align-items-center justify-content-center text-muted">
+                              <i className="fal fa-folder-open fa-3x mb-3" />
+                              <div className="fw-semibold">No projects found for you</div>
+                            </div>
+                          </td>
                         </tr>
                       )}
                       {!loading &&
