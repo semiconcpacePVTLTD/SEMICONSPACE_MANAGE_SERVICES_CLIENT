@@ -122,6 +122,30 @@ export default function MessageInfo({ projectId }) {
       return null;
     }
   }
+
+  // Try multiple places for email to avoid empty value
+  function getUserEmailFromStorage() {
+    const direct =
+      localStorage.getItem("email") ||
+      localStorage.getItem("user_email") ||
+      localStorage.getItem("userEmail");
+    if (direct) return direct;
+    try {
+      const raw = localStorage.getItem("auth");
+      const auth = raw ? JSON.parse(raw) : {};
+      const u = auth?.data?.user || auth?.data || auth?.user || {};
+      return (
+        u?.email ||
+        u?.email_id ||
+        u?.emailId ||
+        u?.mail ||
+        u?.contact?.email ||
+        null
+      );
+    } catch (_) {
+      return null;
+    }
+  }
   function getFreelancerIdFromProject(p) {
     return (
       p?.freelancerId ||
@@ -300,6 +324,9 @@ export default function MessageInfo({ projectId }) {
         author: isMe ? "me" : "them",
         authorName: isMe ? "You" : (senderName || "User"),
         attachments,
+        // Preserve sender and role for payment detection/UI rules
+        senderId,
+        roleId: Number(m?.role_id ?? m?.roleId ?? 0) || 0,
       };
     });
   }
@@ -366,8 +393,8 @@ export default function MessageInfo({ projectId }) {
         ...(attachments.length ? { attachments } : {}),
       };
 
-      // Always hit the absolute service host you provided for sending
-      const sendEndpoint = `http://192.168.1.30:8008/tickets-service/${encodeURIComponent(ticketId)}/messages`;
+      // Send via env-configured ticket service
+      const sendEndpoint = `${baseURL}/tickets-service/${encodeURIComponent(ticketId)}/messages`;
       const res = await fetch(sendEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -633,15 +660,23 @@ export default function MessageInfo({ projectId }) {
       // Assign based on role_id: if role_id === 1 (client) -> send freelancer_id; if role_id === 2 or 3 (freelancer/admin) -> send client id
       const assignedToId = roleId === 1 ? freelancerId : clientId || freelancerId;
 
+      // Build names/ids per role rules
+      const currentUserName = getUserNameFromStorage() || localStorage.getItem("name") || "";
+      const clientNameFromProject = projectFromNav?.userName || projectFromNav?.userNmae || projectFromNav?.clientName || localStorage.getItem("clientName") || "";
+      const freelancerNameFromProject = projectFromNav?.freelancerName || projectFromNav?.freelancerNmae || localStorage.getItem("freelancerName") || assignedToName || "";
+      const assignedToName2 = roleId === 1 ? freelancerNameFromProject : (clientNameFromProject || currentUserName);
+
       const body = {
         project_id: projectId,
         category: form.category,
         role_id: roleId,
         description: form.description,
         attachments: (form.files || []).map((f) => f.name),
-        // IDs per requirement
-        raised_by: raisedById || "",
-        assigned_to: assignedToId || "",
+        // Names in raised_by / assigned_to, and IDs separately
+        raised_by: currentUserName || "",
+        assigned_to: assignedToName2 || "",
+        raised_by_id: raisedById || "",
+        raised_to_id: assignedToId || "",
       };
 
       if (form.category === "project_clarification") {
@@ -676,10 +711,7 @@ export default function MessageInfo({ projectId }) {
         body.agreement_details = form.agreement_details || "Both parties agree to the milestone terms and delivery schedule.";
       }
 
-      const createEndpoint =
-        form.category === "project_clarification" || form.category === "start_approval"
-          ? "http://192.168.1.30:8008/tickets-service/create"
-          : `${baseURL}/tickets-service/create`;
+      const createEndpoint = `${baseURL}/tickets-service/create`;
 
       const res = await fetch(createEndpoint, {
         method: "POST",
@@ -703,45 +735,41 @@ export default function MessageInfo({ projectId }) {
             localStorage.getItem("jwt") ||
             "";
 
-          // Figure out ticket id from API response
+          // ticket id
           const newTicketId = data?.data?.ticket_id || data?.ticket_id || data?.data?.id || data?.id;
 
-          // Create a simple PDF-like Blob (fallback to text if PDF generation not available in-browser)
-          const finalized = (startApproval?.milestones || []).map((m) => ({
-            title: String(m?.title || "").trim(),
-            amount: Number(m?.amount || 0),
-            start_date: String(m?.start_date || "").trim(),
-            end_date: String(m?.end_date || "").trim(),
-            notes: String(m?.notes || "").trim(),
-          }));
-          const total = Number(startApproval?.total) || finalized.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-          const lines = [
-            `Milestones Summary for Project ${projectId}`,
-            `Total: ${total}`,
-            "",
-            ...finalized.map((m, i) => `${i + 1}. ${m.title} | ${m.amount} | ${m.start_date} -> ${m.end_date} | ${m.notes}`),
-          ].join("\n");
-          const blob = new Blob([lines], { type: "application/pdf" });
-          const file = new File([blob], "milestones.pdf", { type: "application/pdf" });
-
-          // Send message with file via FormData
+          // Fetch finalized milestones PDF/url from API and attach as link message
           if (newTicketId) {
-            const fd = new FormData();
-            fd.append("sender_id", String(raisedById || ""));
-            fd.append("sender", String(raisedById || ""));
-            fd.append("role_id", String(roleId || 0));
-            fd.append("text", "Milestones document attached. Click to view. [Pay Now]");
-            fd.append("file", file);
+            try {
+              const resM = await fetch(`${baseURL}/tickets-service/get-milestones/${encodeURIComponent(projectId)}`);
+              const dataM = await resM.json().catch(() => ({}));
+              const payloadM = dataM?.data || {};
+              const pdfUrl = payloadM?.pdf_url || "";
 
-            const sendEndpoint = `http://192.168.1.30:8008/tickets-service/${encodeURIComponent(newTicketId)}/messages`;
-            await fetch(sendEndpoint, {
-              method: "POST",
-              headers: { ...(token3 ? { Authorization: `Bearer ${token3}` } : {}) },
-              body: fd,
-            }).catch(() => {});
+              const senderName2 = getUserNameFromStorage() || localStorage.getItem("name") || "";
+              const sendEndpoint = `${baseURL}/tickets-service/${encodeURIComponent(newTicketId)}/messages`;
 
-            // Refresh chat detail to show the new message
-            try { await loadTicketDetail({ ticket_id: newTicketId }); } catch {}
+              // Send PDF as attachment so it shows as a clickable link in chat
+              const msgBody = {
+                sender_id: String(raisedById || ""),
+                sender: String(senderName2 || ""),
+                role_id: Number(roleId || 0),
+                text: "Ticket created successfully. Preparing details…",
+                ...(pdfUrl ? { attachments: [String(pdfUrl)] } : {}),
+              };
+
+              await fetch(sendEndpoint, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Accept: "application/json",
+                  ...(token3 ? { Authorization: `Bearer ${token3}` } : {}),
+                },
+                body: JSON.stringify(msgBody),
+              });
+
+              try { await loadTicketDetail({ ticket_id: newTicketId }); } catch {}
+            } catch {}
           }
         }
       } catch {}
@@ -860,7 +888,7 @@ export default function MessageInfo({ projectId }) {
         localStorage.getItem("jwt") ||
         "";
 
-      const url = `http://192.168.1.30:8008/tickets-service/${encodeURIComponent(ticketId)}/milestones/update`;
+      const url = `${baseURL}/tickets-service/${encodeURIComponent(ticketId)}/milestones/update`;
       // Backend requires full body: user_id, milestones (full array), total_amount
       const payload = {
         user_id: userId,
@@ -915,7 +943,7 @@ export default function MessageInfo({ projectId }) {
         localStorage.getItem("authToken") ||
         localStorage.getItem("jwt") ||
         "";
-      const url = `http://192.168.1.30:8008/tickets-service/${encodeURIComponent(ticketId)}/close?user_id=${encodeURIComponent(userId)}`;
+      const url = `${baseURL}/tickets-service/${encodeURIComponent(ticketId)}/close?user_id=${encodeURIComponent(userId)}`;
       const res = await fetch(url, {
         method: "PUT",
         headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -1190,34 +1218,161 @@ export default function MessageInfo({ projectId }) {
               </div>
             )}
             <div style={{ whiteSpace: "pre-wrap" }}>{m.text}</div>
-            {/* Inline Pay Now button if the message includes the cue */}
-            {/\[Pay Now\]/i.test(String(m.text || "")) && (
-              <div className="mt-2">
-                <button type="button" className={`btn btn-sm ${m.author === "me" ? "btn-light" : "btn-outline-primary"}`}
-                  onClick={async () => {
-                    try {
-                      const ticketId = selectedTicket?.ticket_id || selectedTicket?.id || selectedTicket?._id;
-                      const token4 =
-                        localStorage.getItem("token") ||
-                        localStorage.getItem("accessToken") ||
-                        localStorage.getItem("authToken") ||
-                        localStorage.getItem("jwt") ||
-                        "";
-                      const fd = new FormData();
-                      fd.append("sender_id", String(getUserIdFromStorage() || ""));
-                      fd.append("sender", String(getUserNameFromStorage() || ""));
-                      fd.append("role_id", String(0));
-                      fd.append("text", "User tapped Pay Now.");
-                      const sendEndpoint = `http://192.168.1.30:8008/tickets-service/${encodeURIComponent(ticketId)}/messages`;
-                      await fetch(sendEndpoint, { method: "POST", headers: { ...(token4 ? { Authorization: `Bearer ${token4}` } : {}) }, body: fd });
-                      await loadTicketDetail({ ticket_id: ticketId });
-                    } catch {}
-                  }}
-                >
-                  Pay Now
-                </button>
-              </div>
-            )}
+            {/* Inline payment request + Pay Now button when system creates ticket for start_approval */}
+            {(() => {
+              // Conditions based on your requirement:
+              // - message.role_id === 3 (system/enterprise)
+              // - text equals the cue
+              // - attachments present (PDF)
+              // - sender_id !== current user
+              const meId = String(getUserIdFromStorage() || "");
+              const isFromOther = String(m?.senderId || "") !== meId;
+              const isCue = /Ticket created successfully\. Preparing details…/i.test(String(m.text || ""));
+              const hasAttachment = Array.isArray(m.attachments) && m.attachments.length > 0;
+              const isSystemMsg = Number(m?.roleId || 0) === 3;
+              const shouldSuggestPay = isSystemMsg && isCue && hasAttachment && isFromOther;
+              if (!shouldSuggestPay) return null;
+
+              // Only show to client role (role_id === 1)
+              let viewerRole = 0;
+              try {
+                const direct = localStorage.getItem("roleid") ?? localStorage.getItem("role_id");
+                if (direct) {
+                  try { const p = JSON.parse(direct); viewerRole = Array.isArray(p) ? Number(p[0]) || 0 : Number(p) || Number(direct) || 0; } catch { viewerRole = Number(direct) || 0; }
+                } else {
+                  const raw = localStorage.getItem("auth");
+                  if (raw) {
+                    const auth = JSON.parse(raw);
+                    const val = auth?.data?.role_id ?? auth?.role_id ?? auth?.data?.user?.role_id ?? auth?.user?.role_id ?? null;
+                    viewerRole = Array.isArray(val) ? Number(val[0]) || 0 : Number(val) || 0;
+                  }
+                }
+              } catch {}
+              if (viewerRole !== 1) return null;
+
+              return (
+                <div className="mt-2">
+                  <div className={`small mb-2 ${m.author === "me" ? "text-white-50" : "text-muted"}`}>
+                    Payment requested for this project. You can proceed to pay now.
+                  </div>
+                  <button type="button" className={`btn btn-sm ${m.author === "me" ? "btn-light" : "btn-outline-primary"}`}
+                    onClick={async () => {
+                      try {
+                        // Add a temporary "Processing payment…" chat bubble for immediate feedback
+                        const tempId = `tmp-${Date.now()}`;
+                        setMessages((prev) => [
+                          ...prev,
+                          {
+                            id: tempId,
+                            text: "Processing payment…",
+                            time: formatISTDateTime(new Date().toISOString()),
+                            author: "me",
+                            authorName: "You",
+                          },
+                        ]);
+
+                        // Log tap to backend
+                        const ticketId = selectedTicket?.ticket_id || selectedTicket?.id || selectedTicket?._id;
+                        const token4 =
+                          localStorage.getItem("token") ||
+                          localStorage.getItem("accessToken") ||
+                          localStorage.getItem("authToken") ||
+                          localStorage.getItem("jwt") ||
+                          "";
+                        const fd = new FormData();
+                        fd.append("sender_id", String(getUserIdFromStorage() || ""));
+                        fd.append("sender", String(getUserNameFromStorage() || ""));
+                        fd.append("role_id", String(1));
+                        fd.append("text", "User tapped Pay Now.");
+                        const sendEndpoint = `${baseURL}/tickets-service/${encodeURIComponent(ticketId)}/messages`;
+                        await fetch(sendEndpoint, { method: "POST", headers: { ...(token4 ? { Authorization: `Bearer ${token4}` } : {}) }, body: fd });
+
+                        // Payment create + verify (server-side Razorpay flow)
+                        const hostAdm = import.meta.env.VITE_BACKEND_HOST_ADMIN;
+                        const payPort = import.meta.env.VITE_BACKEND_PAYMENT_PORT;
+                        if (!hostAdm || !payPort) throw new Error("Payment service env not configured");
+                        const paymentBase = `http://${hostAdm}:${payPort}`;
+
+                        // Get finalized milestones/total for this project from tickets-service
+                        const resM = await fetch(`${baseURL}/tickets-service/get-milestones/${encodeURIComponent(projectId)}`);
+                        const dataM = await resM.json().catch(() => ({}));
+                        const payload = dataM?.data || {};
+                        const finalized = Array.isArray(payload.finalized_milestones) ? payload.finalized_milestones : [];
+                        const totalAmount = Number(payload.total_amount) || finalized.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+
+                        const userId = localStorage.getItem("userId") || "";
+                        const userName = localStorage.getItem("name") || "";
+                        const userEmail = getUserEmailFromStorage() || "";
+
+                        const projectFromNav = location?.state?.project || location?.state || {};
+                        let freelancerId = (
+                          projectFromNav?.freelancerId || projectFromNav?.freelancer_id || projectFromNav?.freelancerUserId || ""
+                        );
+                        let freelancerEmail = projectFromNav?.freelancerEmail || localStorage.getItem("freelancerEmail") || "";
+                        let freelancerName = projectFromNav?.freelancerName || localStorage.getItem("freelancerName") || "";
+                        if (!freelancerId) {
+                          try {
+                            const t = selectedTicket || {};
+                            const msgs = Array.isArray(t.messages) ? t.messages : [];
+                            for (const mm of msgs) {
+                              const sid = mm?.sender_id || mm?.senderId;
+                              if (sid && sid !== userId) { freelancerId = sid; break; }
+                            }
+                          } catch {}
+                        }
+
+                        const createRes = await fetch(`${paymentBase}/payment-service/createPayment`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", Accept: "application/json" },
+                          body: JSON.stringify({
+                            userId,
+                            userName,
+                            userEmail,
+                            currency: "INR",
+                            total_amount: totalAmount,
+                            finalized_milestones: finalized,
+                            freelancerId,
+                            freelancerEmail,
+                            freelancerName,
+                            projectId,
+                          }),
+                        });
+                        const createData = await createRes.json().catch(() => ({}));
+                        if (!createRes.ok) throw new Error(createData?.message || `Create failed: ${createRes.status}`);
+
+                        const verifyRes = await fetch(`${paymentBase}/payment-service/verifyPayment`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", Accept: "application/json" },
+                          body: JSON.stringify({
+                            razorpay_order_id: createData?.data?.razorpayOrder?.id,
+                            razorpay_payment_id: createData?.data?.orderId,
+                            razorpay_signature: createData?.data?.razorpaySignature,
+                          }),
+                        });
+                        const verifyData = await verifyRes.json().catch(() => ({}));
+                        if (!verifyRes.ok) throw new Error(verifyData?.message || `Verify failed: ${verifyRes.status}`);
+
+                        // Replace the temp message with success status
+                        setMessages((prev) => prev.map((msg) => msg.id === tempId ? { ...msg, text: "Payment successful.", time: formatISTDateTime(new Date().toISOString()) } : msg));
+                        await Swal.fire({ icon: "success", title: "Payment verified", text: verifyData?.message || "Success" });
+                      } catch (e) {
+                        // Replace the temp message with failure status
+                        setMessages((prev) => prev.map((msg) => msg.id === tempId ? { ...msg, text: `Payment failed: ${e?.message || "Unknown error"}` } : msg));
+                        await Swal.fire({ icon: "error", title: "Payment", text: e?.message || "Failed to process payment" });
+                      } finally {
+                        // Refresh conversation to reflect any backend messages
+                        try {
+                          const ticketId = selectedTicket?.ticket_id || selectedTicket?.id || selectedTicket?._id;
+                          await loadTicketDetail({ ticket_id: ticketId });
+                        } catch {}
+                      }
+                    }}
+                  >
+                    Pay Now
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -1316,13 +1471,15 @@ export default function MessageInfo({ projectId }) {
                           if (val === "start_approval" && projectId) {
                             try {
                               setStartApproval({ loading: true, error: "", milestones: [], total: 0 });
-                              const res = await fetch(`http://192.168.1.30:8008/tickets-service/get-milestones/${encodeURIComponent(projectId)}`);
+                              const res = await fetch(`${baseURL}/tickets-service/get-milestones/${encodeURIComponent(projectId)}`);
                               const data = await res.json().catch(() => ({}));
                               if (!res.ok) throw new Error(data?.message || `Failed: ${res.status}`);
                               const payload = data?.data || {};
                               const finalized = Array.isArray(payload.finalized_milestones) ? payload.finalized_milestones : [];
                               const total = Number(payload.total_amount) || finalized.reduce((s, m) => s + (Number(m?.amount) || 0), 0);
                               setStartApproval({ loading: false, error: "", milestones: finalized, total });
+                              // Show typing and auto message until send
+                              await Swal.fire({ icon: "success", title: "Ticket category set", text: "Fetching milestones. You will see an automated message soon." });
                             } catch (err) {
                               setStartApproval({ loading: false, error: err?.message || "Failed to fetch milestones", milestones: [], total: 0 });
                               await Swal.fire({ icon: "error", title: "Milestones", text: err?.message || "Failed to fetch finalized milestones" });

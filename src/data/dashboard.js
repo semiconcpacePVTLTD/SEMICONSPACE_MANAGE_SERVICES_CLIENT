@@ -21,7 +21,8 @@ export const dasboardNavigation = [
     id: 4,
     name: "Working Projects",
     icon: "flaticon-chat",
-    path: "/message",
+    iconImg: "/icons/project.png",
+    path: "/working-projects",
   },
    {
     id: 5,
