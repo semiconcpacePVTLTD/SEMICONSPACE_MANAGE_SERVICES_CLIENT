@@ -6,6 +6,8 @@ export default function DashboardSidebar({ profile }) {
   console.log("Sidebar received profile:", profile);
 
   const { pathname } = useLocation();
+  // When on message page, highlight Manage Project in sidebar
+  const effectivePath = pathname === "/message" ? "/manage-projects" : pathname;
 
   const handleLogout = () => {
     Swal.fire({
@@ -78,7 +80,7 @@ export default function DashboardSidebar({ profile }) {
             ) : (
               <Link
                 to={item.path}
-                className={`items-center ${pathname === item.path ? "-is-active" : ""}`}
+                className={`items-center ${effectivePath === item.path ? "-is-active" : ""}`}
               >
                 <i className={`${item.icon} mr15`} />
                 {item.name}

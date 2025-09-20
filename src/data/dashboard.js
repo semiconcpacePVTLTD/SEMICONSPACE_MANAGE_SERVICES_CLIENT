@@ -17,12 +17,12 @@ export const dasboardNavigation = [
   //   icon: "flaticon-like",
   //   path: "/saved",
   // },
-  {
-    id: 4,
-    name: "Meetings & Tickets",
-    icon: "flaticon-chat",
-    path: "/message",
-  },
+  // {
+  //   id: 4,
+  //   name: "Meetings & Tickets",
+  //   icon: "flaticon-chat",
+  //   path: "/message",
+  // },
    {
     id: 5,
     name: "Wallet",

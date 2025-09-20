@@ -78,6 +78,30 @@ export default function LoginPage() {
           };
 
           localStorage.setItem("auth", JSON.stringify(normalized));
+          // Mirror identifiers for downstream modules (tickets expect userId, etc.)
+          try {
+            const userId =
+              normalized?.data?.user?.userId ||
+              normalized?.data?.user?.id ||
+              normalized?.data?.userId ||
+              normalized?.data?.id ||
+              normalized?.user?.userId ||
+              normalized?.user?.id;
+            if (userId) localStorage.setItem("userId", String(userId));
+
+            const name =
+              normalized?.data?.user?.name ||
+              normalized?.data?.name ||
+              normalized?.user?.name;
+            if (name) localStorage.setItem("name", String(name));
+
+            const roleId =
+              normalized?.data?.user?.role_id ||
+              normalized?.data?.role_id ||
+              normalized?.user?.role_id;
+            if (roleId != null) localStorage.setItem("role_id", String(roleId));
+          } catch (_) {}
+
           if (data?.data?.access_token) {
             localStorage.setItem("access_token", data.data.access_token);
             localStorage.setItem("isLoggedIn", "true");
