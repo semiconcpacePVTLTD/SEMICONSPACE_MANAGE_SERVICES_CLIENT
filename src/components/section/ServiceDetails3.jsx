@@ -97,7 +97,7 @@ export default function ServiceDetail3({ service, loading }) {
                             Professional PCB Design, Layout & Prototyping
                             Services
                           </h2>
-                        )}``
+                        )}
 
                       </div>
                     </div>

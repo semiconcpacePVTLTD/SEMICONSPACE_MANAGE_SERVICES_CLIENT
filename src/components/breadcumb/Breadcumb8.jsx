@@ -18,18 +18,18 @@ export default function Breadcumb8({ service, loading }) {
             src="/images/vector-img/right-bottom.png"
             alt="right-bottom"
           />
-          <img
+          {/* <img
             className="service-v1-vector bounce-y d-none d-xl-block"
             src="/images/vector-img/vector-service-v1.png"
             alt="vector-service"
-          />
+          /> */}
           <div className="container">
             <div className="row wow fadeInUp">
               <div className="col-xl-7">
                 <div className="position-relative">
                   <h2>{title}</h2>
                   <div className="list-meta mt30">
-                    <a className="list-inline-item mb5-sm">
+                    {/* <a className="list-inline-item mb5-sm">
                       <span className="position-relative mr10">
                         <img
                           className="rounded-circle"
@@ -39,7 +39,7 @@ export default function Breadcumb8({ service, loading }) {
                         <span className="online-badge" />
                       </span>
                       <span className="fz14">{authorName}</span>
-                    </a>
+                    </a> */}
 
 
                   </div>

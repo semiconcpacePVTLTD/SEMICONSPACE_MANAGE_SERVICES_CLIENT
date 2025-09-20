@@ -35,9 +35,8 @@ export default function Pagination1({
 
   return (
     <div
-      className={`mbp_pagination text-center ${
-        pathname === "/blog-2" || pathname === "/blog-3" ? "mb40-md" : ""
-      } ${pathname === "/shop-list" ? "mt30" : ""}`}
+      className={`mbp_pagination text-center ${pathname === "/blog-2" || pathname === "/blog-3" ? "mb40-md" : ""
+        } ${pathname === "/shop-list" ? "mt30" : ""}`}
     >
       <ul className="page_navigation">
         <li className="page-item" onClick={() => handlePageClick(currentPage - 1)}>
@@ -53,7 +52,7 @@ export default function Pagination1({
         </li>
       </ul>
       <p className="mt10 mb-0 pagination_page_count text-center">
-        {startItem} – {endItem} of {totalItems} services
+        {startItem} – {endItem} of {totalItems} Freelancers
       </p>
     </div>
   );

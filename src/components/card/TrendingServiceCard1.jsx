@@ -44,7 +44,7 @@ export default function TrendingServiceCard1({ data }) {
         </p>
 
         {/* Price + Button */}
-        <div className="mt-auto flex items-center justify-between">
+        {/* <div className="mt-auto flex items-center justify-between">
           <p className="text-base font-medium text-gray-700">
             <span className="text-gray-500 text-sm">Starting at</span>{" "}
             <span className="text-blue-600 font-bold">Rs.{data.price}</span>
@@ -55,7 +55,7 @@ export default function TrendingServiceCard1({ data }) {
           >
             Book Now
           </Link>
-        </div>
+        </div> */}
       </div>
     </div>
   );
