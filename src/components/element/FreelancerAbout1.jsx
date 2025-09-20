@@ -73,6 +73,36 @@ export default function FreelancerAbout1({ data }) {
     }
   }
 
+  // Compute profile completion percent based on key fields
+  function getProfileCompletion(profileDetails = {}, profile = {}) {
+    const candidates = [
+      profileDetails.full_name ?? profile.name,
+      profileDetails.email ?? profile.email,
+      profileDetails.phone ?? profile.phone,
+      profileDetails.location ?? profile.location,
+      profileDetails.hourly_rate,
+      profileDetails.services ?? profile.services,
+      profileDetails.skills ?? profile.skills,
+      profileDetails.bio ?? profile.bio,
+      profileDetails.experience ?? profile.experience,
+      profileDetails.education ?? profile.education,
+      profileDetails.company ?? profile.company,
+      profileDetails.website ?? profile.website,
+      profileDetails.avatar ?? profile.avatar,
+    ];
+    const toFilled = (v) => {
+      if (v == null) return false;
+      if (typeof v === 'string') return v.trim().length > 0;
+      if (Array.isArray(v)) return v.length > 0;
+      if (typeof v === 'object') return Object.keys(v).length > 0;
+      return true;
+    };
+    const total = candidates.length;
+    const filled = candidates.filter(toFilled).length;
+    if (!total) return 0;
+    return Math.max(0, Math.min(100, Math.round((filled / total) * 100)));
+  }
+
   // Normalize various service payload shapes to [string]
   function normalizeServices(raw) {
     if (!raw) return [];
@@ -360,6 +390,12 @@ export default function FreelancerAbout1({ data }) {
     }
   }
 
+  // Calculate completion% for the shown freelancer
+  const completionPercent = getProfileCompletion(
+    data?.profile_details || {},
+    data?.profile || data || {}
+  );
+
   return (
     <>
       <div className="price-widget pt25 bdrs8">
@@ -368,6 +404,37 @@ export default function FreelancerAbout1({ data }) {
           <small className="fz15 fw500">/per hour</small>
         </h3>
         <div className="category-list mt20">
+          {/* Profile Completion - only on own profile */}
+          {(() => {
+            const viewerUserId = String(getUserIdFromStorage() || "");
+            const viewedFreelancerId = String(
+              data?.profile?.user_id || data?.profile_details?.user_id || data?.user_id || ""
+            );
+            const isOwnProfile = viewerUserId && viewedFreelancerId && viewerUserId === viewedFreelancerId;
+            if (!isOwnProfile) return null;
+            return (
+              <div className="mb-3">
+                <div className="d-flex align-items-center justify-content-between">
+                  <span className="text d-flex align-items-center">
+                    <i className="flaticon-checked text-thm2 pe-2 vam" />
+                    Profile completion
+                  </span>
+                  <span>{completionPercent}%</span>
+                </div>
+                <div className="progress mt-2" style={{ height: 8, background: "#eee" }}>
+                  <div
+                    className="progress-bar"
+                    role="progressbar"
+                    style={{ width: `${completionPercent}%`, background: completionPercent >= 70 ? "#28a745" : "#ffc107" }}
+                    aria-valuenow={completionPercent}
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
           <a className="d-flex align-items-center justify-content-between bdrb1 pb-2">
             <span className="text">
               <i className="flaticon-place text-thm2 pe-2 vam" />
@@ -405,41 +472,59 @@ export default function FreelancerAbout1({ data }) {
             <span>Fluent</span>
           </a>
         </div>
-        {getRoleIdsFromStorage().includes(1) && (
 
+        {/* Customer actions (role 1) */}
+        {getRoleIdsFromStorage().includes(1) && (
           <div
             className="container my-4 p-4"
-            style={{
-              border: "0.1rem solid #ccc",
-              borderRadius: "8px",
-            }}
+            style={{ border: "0.1rem solid #ccc", borderRadius: "8px" }}
           >
-            {/* <h4 className="mb-4 text-center" style={{ color: "#6c757d", fontWeight: "600" }}>
-            INITIATE THE PROJECT
-          </h4> */}
-
-
-
             <div className="d-grid mb-3">
               <button type="button" className="ud-btn btn-thm d-flex align-items-center justify-content-center" onClick={handleOpenMeetingModal}>
                 Schedule Meeting
-                <i className="fal fa-video-camera" style={{ marginLeft: "8px", transform: "rotate(0deg)" }} />
+                <i className="fal fa-video-camera" style={{ marginLeft: "8px" }} />
               </button>
             </div>
-
             <div className="d-grid">
-              <button
-                type="button"
-                className="ud-btn btn-thm d-flex align-items-center justify-content-center"
-                onClick={handleOpenModal}
-              >
+              <button type="button" className="ud-btn btn-thm d-flex align-items-center justify-content-center" onClick={handleOpenModal}>
                 Initiate the project
-                <i className="fal fa-rocket ms-2" style={{ transform: "rotate(0deg)" }} />
+                <i className="fal fa-rocket ms-2" />
               </button>
             </div>
-
           </div>
         )}
+
+        {/* Freelancer actions (role 2 or 3) - only on own profile */}
+        {(() => {
+          const roles = getRoleIdsFromStorage();
+          const isFreelancer = roles.includes(2) || roles.includes(3);
+          if (!isFreelancer) return null;
+
+          // Show only if the logged-in freelancer is viewing their own profile
+          const viewerUserId = String(getUserIdFromStorage() || "");
+          const viewedFreelancerId = String(
+            data?.profile?.user_id || data?.profile_details?.user_id || data?.user_id || ""
+          );
+          const isOwnProfile = viewerUserId && viewedFreelancerId && viewerUserId === viewedFreelancerId;
+          if (!isOwnProfile) return null;
+
+          return (
+            <div
+              className="container my-4 p-4"
+              style={{ border: "0.1rem solid #ccc", borderRadius: "8px" }}
+            >
+              <div className="d-grid mb-2">
+                <Link to="/dashboard/my-profile" className="ud-btn btn-thm d-flex align-items-center justify-content-center">
+                  {completionPercent < 100 ? "Complete profile" : "View your profile"}
+                  <i className="fal fa-user-edit ms-2" />
+                </Link>
+              </div>
+              <div className="text-center text-muted" style={{ fontSize: 12 }}>
+                {completionPercent}% complete
+              </div>
+            </div>
+          );
+        })()}
 
       </div>
 
