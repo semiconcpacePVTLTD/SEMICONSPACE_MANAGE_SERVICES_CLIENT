@@ -516,7 +516,7 @@ export default function FreelancerAbout1({ data }) {
               <div className="d-grid mb-2">
                 <Link to="/dashboard/my-profile" className="ud-btn btn-thm d-flex align-items-center justify-content-center">
                   {completionPercent < 100 ? "Complete profile" : "View your profile"}
-                  <i className="fal fa-user-edit ms-2" />
+                  <i className="fas fa-user-pen ms-2" aria-hidden="true" style={{ transform: "rotate(0deg)" }} />
                 </Link>
               </div>
               <div className="text-center text-muted" style={{ fontSize: 12 }}>
