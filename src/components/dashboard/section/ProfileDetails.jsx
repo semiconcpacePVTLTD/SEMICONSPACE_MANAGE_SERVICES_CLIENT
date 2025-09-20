@@ -12,8 +12,16 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
   const [profile_details, setProfileDetails] = useState(details || {});
   const detailsInitialRef = useRef(null);
   useEffect(() => {
-    setProfileDetails(details || {});
-    if (details && !detailsInitialRef.current) detailsInitialRef.current = details;
+    // Seed editable profile details. Mirror backend 'services' into 'services_list' for UI editing.
+    const nextDetails = (() => {
+      const d = details ? { ...details } : {};
+      if (!Array.isArray(d.services_list)) {
+        d.services_list = Array.isArray(d.services) ? [...d.services] : [];
+      }
+      return d;
+    })();
+    setProfileDetails(nextDetails);
+    if (details && !detailsInitialRef.current) detailsInitialRef.current = nextDetails;
   }, [details]);
   // Non-customer select states
   const [getHourly, setHourly] = useState({ option: "Select", value: null });
@@ -303,14 +311,15 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
         const {
           pan_number, pan_verified, mcs_incorporation_no, mcs_incorporation_image,
           mcs_verified, gstin_number, gstin_verified, verified, remarks,
+          services_list, services,
           ...rest
         } = d;
 
         const filterArr = (arr) =>
           Array.isArray(arr)
             ? arr
-              .map((s) => (typeof s === "string" ? s.trim() : s))
-              .filter((v) => (typeof v === "string" ? v.length > 0 : Boolean(v)))
+                .map((s) => (typeof s === "string" ? s.trim() : s))
+                .filter((v) => (typeof v === "string" ? v.length > 0 : Boolean(v)))
             : [];
 
         // Normalize hourly_rate to a 2-decimal string or null
@@ -328,23 +337,61 @@ export default function ProfileDetails({ profile, details, isCustomer, canEditDe
         // Convert fixed_price_projects array [{domain, price}] -> object map { [domain]: "price" }
         const projectsMap = Array.isArray(rest.fixed_price_projects)
           ? rest.fixed_price_projects.reduce((acc, p) => {
-            const domain = typeof p?.domain === "string" ? p.domain.trim() : "";
-            const priceStr = toPriceString(p?.price);
-            if (domain && priceStr) acc[domain] = priceStr;
-            return acc;
-          }, {})
+              const domain = typeof p?.domain === "string" ? p.domain.trim() : "";
+              const priceStr = toPriceString(p?.price);
+              if (domain && priceStr) acc[domain] = priceStr;
+              return acc;
+            }, {})
           : (rest.fixed_price_projects && typeof rest.fixed_price_projects === "object"
-            ? rest.fixed_price_projects
-            : {});
+              ? rest.fixed_price_projects
+              : {});
 
-        return {
+        // Services: map editable services_list (UI) -> payload 'services' array
+        const servicesArray = filterArr(Array.isArray(services_list) ? services_list : (Array.isArray(services) ? services : []));
+
+        // Education: ensure numeric fields are numbers, not strings; include month/day if present
+        const toIntOrNull = (v) => {
+          if (v === "" || v == null) return null;
+          const n = Number(String(v).replace(/[^0-9-]/g, ""));
+          return Number.isFinite(n) ? n : null;
+        };
+        const educationArray = Array.isArray(rest.education)
+          ? rest.education.map((edu) => {
+              const normalized = {
+                degree: typeof edu?.degree === "string" ? edu.degree.trim() : (edu?.degree ?? ""),
+                institution: typeof edu?.institution === "string" ? edu.institution.trim() : (edu?.institution ?? ""),
+              };
+              const sy = toIntOrNull(edu?.start_year);
+              const sm = toIntOrNull(edu?.start_month);
+              const sd = toIntOrNull(edu?.start_day);
+              const ey = toIntOrNull(edu?.end_year);
+              const em = toIntOrNull(edu?.end_month);
+              const ed = toIntOrNull(edu?.end_day);
+              if (sy != null) normalized.start_year = sy;
+              if (sm != null) normalized.start_month = sm;
+              if (sd != null) normalized.start_day = sd;
+              if (ey != null) normalized.end_year = ey;
+              if (em != null) normalized.end_month = em;
+              if (ed != null) normalized.end_day = ed;
+              return normalized;
+            }).filter((e) =>
+              (e.degree && e.degree.length) ||
+              (e.institution && e.institution.length) ||
+              e.start_year != null || e.end_year != null || e.start_month != null || e.end_month != null || e.start_day != null || e.end_day != null
+            )
+          : [];
+
+        const result = {
           ...rest,
           languages: filterArr(rest.languages),
           skills: filterArr(rest.skills),
-          services_list: filterArr(rest.services_list),
           hourly_rate,
           fixed_price_projects: projectsMap,
         };
+        if (servicesArray.length > 0) result.services = servicesArray;
+        if (educationArray.length > 0) result.education = educationArray;
+
+        return result;
       })();
 
       // If a new image file is selected, upload it first to obtain a URL

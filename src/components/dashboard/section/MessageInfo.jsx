@@ -28,9 +28,24 @@ export default function MessageInfo({ projectId }) {
 
   // Create Ticket modal
   const [createOpen, setCreateOpen] = useState(false);
+  const [updateMilestonesMode, setUpdateMilestonesMode] = useState(false);
+  const [updatingMilestones, setUpdatingMilestones] = useState(false);
   const [categories, setCategories] = useState([]);
   const [catLoading, setCatLoading] = useState(false);
   const [catError, setCatError] = useState("");
+
+  // start_approval: finalized milestones fetched from backend
+  const [startApproval, setStartApproval] = useState({ loading: false, error: "", milestones: [], total: 0 });
+
+  // Modal to view finalized milestones (read-only)
+  const [finalizedModalOpen, setFinalizedModalOpen] = useState(false);
+
+  // Milestone two-step modal (create flow)
+  const [milestoneModalOpen, setMilestoneModalOpen] = useState(false);
+  const [milestoneDraft, setMilestoneDraft] = useState(null);
+  // Keep originals to send only changed values on update
+  const originalMilestonesRef = useRef([]);
+  const originalTotalRef = useRef(null);
 
   // Create ticket form
   const [form, setForm] = useState({
@@ -38,12 +53,25 @@ export default function MessageInfo({ projectId }) {
     description: "",
     files: [],
     total_amount: "",
+    agreement_details: "Both parties agree to the milestone terms and delivery schedule.",
     proposed_milestones: [
       { title: "milestone_Advance", amount: "", start_date: "", end_date: "", notes: "" },
       { title: "milestone_Midway", amount: "", start_date: "", end_date: "", notes: "" },
       { title: "milestone_Final", amount: "", start_date: "", end_date: "", notes: "" },
     ],
   });
+
+  // Auto-calc total from milestone rows
+  const milestonesTotal = useMemo(() => {
+    try {
+      return (form?.proposed_milestones || []).reduce(
+        (sum, m) => sum + (Number(m?.amount || 0) || 0),
+        0
+      );
+    } catch {
+      return 0;
+    }
+  }, [form?.proposed_milestones]);
 
   // Env
   const host = import.meta.env.VITE_BACKEND_HOST;
@@ -104,6 +132,20 @@ export default function MessageInfo({ projectId }) {
       null
     );
   }
+  function getClientIdFromProject(p) {
+    return (
+      p?.clientId ||
+      p?.client_id ||
+      p?.clientUserId ||
+      p?.user_id ||
+      p?.userId ||
+      p?.owner_id ||
+      p?.owner?.id ||
+      p?.customer_id ||
+      p?.customer?.id ||
+      null
+    );
+  }
   const location = useLocation();
   const assignedToName =
     location?.state?.freelancerName ||
@@ -137,6 +179,15 @@ export default function MessageInfo({ projectId }) {
       return "";
     }
   }
+  // Build ISO string with IST (+05:30) offset for start/end of day
+  function toISTISO(dateStr, opts = { endOfDay: false }) {
+    if (!dateStr) return "";
+    const time = opts.endOfDay ? "23:59:59" : "00:00:00";
+    // Keep explicit +05:30 offset as requested
+    return `${dateStr}T${time}+05:30`;
+  }
+  // Currency formatter for display
+  const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
   function initialsFrom(text) {
     const str = String(text || "?").trim();
     const parts = str.split(/\s+/).filter(Boolean);
@@ -234,12 +285,21 @@ export default function MessageInfo({ projectId }) {
       const senderId = String(m?.sender_id ?? m?.senderId ?? "");
       const senderName = m?.sender || m?.authorName || m?.author || m?.user || "User";
       const isMe = !!meId && senderId === meId; // strictly compare sender_id to local userId
+      // Collect attachment URLs/paths if provided by backend
+      let attachments = [];
+      try {
+        if (Array.isArray(m?.attachments)) attachments = m.attachments;
+        else if (Array.isArray(m?.attachment_urls)) attachments = m.attachment_urls;
+        else if (Array.isArray(m?.files)) attachments = m.files.map((f) => f?.url || f?.path || f).filter(Boolean);
+      } catch {}
+      attachments = (attachments || []).map(String);
       return {
         id,
         text,
         time: formatISTDateTime(time),
         author: isMe ? "me" : "them",
         authorName: isMe ? "You" : (senderName || "User"),
+        attachments,
       };
     });
   }
@@ -346,8 +406,24 @@ export default function MessageInfo({ projectId }) {
   }, [tickets, search]);
 
   // Create Ticket: load categories
-  async function openCreateModal() {
+  async function openCreateModal(opts = { mode: "create" }) {
+    // Fresh form when opening create modal
+    if (opts?.mode !== "update") {
+      setForm({
+        category: "",
+        description: "",
+        files: [],
+        total_amount: "",
+        proposed_milestones: [
+          { title: "milestone_Advance", amount: "", start_date: "", end_date: "", notes: "" },
+          { title: "milestone_Midway", amount: "", start_date: "", end_date: "", notes: "" },
+          { title: "milestone_Final", amount: "", start_date: "", end_date: "", notes: "" },
+        ],
+      });
+      setMilestoneDraft(null);
+    }
     setCreateOpen(true);
+    setUpdateMilestonesMode(opts?.mode === "update");
     setCatLoading(true);
     setCatError("");
     try {
@@ -400,31 +476,130 @@ export default function MessageInfo({ projectId }) {
   }
   function rebalanceMilestones(changedIdx, newVal) {
     setForm((prev) => {
-      const total = Number(prev.total_amount) || 0;
+      // If we have exactly 3 rows, keep the simple rebalance; otherwise just set the value
       const pm = [...prev.proposed_milestones];
       const v = Math.max(0, Number(newVal) || 0);
       pm[changedIdx] = { ...pm[changedIdx], amount: v };
-      const rest = total - v;
-      const others = [0, 1, 2].filter((i) => i !== changedIdx);
-      const each = Math.max(0, Math.round((rest / 2) * 100) / 100);
-      pm[others[0]] = { ...pm[others[0]], amount: each };
-      pm[others[1]] = { ...pm[others[1]], amount: Math.max(0, Math.round((rest - each) * 100) / 100) };
+      if (pm.length === 3) {
+        const total = Number(prev.total_amount) || 0;
+        const rest = total - v;
+        const others = [0, 1, 2].filter((i) => i !== changedIdx);
+        const each = Math.max(0, Math.round((rest / 2) * 100) / 100);
+        pm[others[0]] = { ...pm[others[0]], amount: each };
+        pm[others[1]] = { ...pm[others[1]], amount: Math.max(0, Math.round((rest - each) * 100) / 100) };
+      }
       return { ...prev, proposed_milestones: pm };
     });
   }
   function updateTotalAmount(val) {
     const t = Math.max(0, Number(val) || 0);
-    const [a, b, c] = splitEqually(t);
+    setForm((prev) => {
+      let next = { ...prev, total_amount: t };
+      // If we have exactly 3 default rows, auto-split equally for convenience
+      if ((prev.proposed_milestones || []).length === 3) {
+        const [a, b, c] = splitEqually(t);
+        next.proposed_milestones = [
+          { ...prev.proposed_milestones[0], amount: a },
+          { ...prev.proposed_milestones[1], amount: b },
+          { ...prev.proposed_milestones[2], amount: c },
+        ];
+      }
+      return next;
+    });
+  }
+
+  // Milestone Draft (3 static rows) helpers for the two-step create flow
+  const FIXED_TITLES = ["milestone_Advance", "milestone_Midway", "milestone_Final"];
+
+  function buildDraftFromForm() {
+    const total = Math.max(0, Number(form.total_amount) || 0);
+    const byTitle = Object.fromEntries((form.proposed_milestones || []).map((m) => [String(m.title || "").trim(), m]));
+    const [a, b, c] = splitEqually(total);
+    return [
+      {
+        title: "milestone_Advance",
+        amount: Number(byTitle["milestone_Advance"]?.amount ?? a) || 0,
+        start_date: byTitle["milestone_Advance"]?.start_date || "",
+        end_date: byTitle["milestone_Advance"]?.end_date || "",
+        notes: byTitle["milestone_Advance"]?.notes || "",
+      },
+      {
+        title: "milestone_Midway",
+        amount: Number(byTitle["milestone_Midway"]?.amount ?? b) || 0,
+        start_date: byTitle["milestone_Midway"]?.start_date || "",
+        end_date: byTitle["milestone_Midway"]?.end_date || "",
+        notes: byTitle["milestone_Midway"]?.notes || "",
+      },
+      {
+        title: "milestone_Final",
+        amount: Number(byTitle["milestone_Final"]?.amount ?? c) || 0,
+        start_date: byTitle["milestone_Final"]?.start_date || "",
+        end_date: byTitle["milestone_Final"]?.end_date || "",
+        notes: byTitle["milestone_Final"]?.notes || "",
+      },
+    ];
+  }
+
+  function openMilestoneCreator() {
+    setMilestoneDraft(buildDraftFromForm());
+    setMilestoneModalOpen(true);
+  }
+
+  function handleDraftAmountChange(idx, nextVal) {
+    const total = Math.max(0, Number(form.total_amount) || 0);
+    const v = Math.max(0, Number(nextVal) || 0);
+    setMilestoneDraft((prev) => {
+      const draft = prev ? [...prev] : buildDraftFromForm();
+      const others = [0, 1, 2].filter((i) => i !== idx);
+      const main = Math.min(v, total);
+      const remaining = Math.max(0, total - main);
+      const each = Math.round((remaining / 2) * 100) / 100;
+      draft[idx] = { ...draft[idx], amount: main };
+      draft[others[0]] = { ...draft[others[0]], amount: each };
+      draft[others[1]] = { ...draft[others[1]], amount: Math.max(0, Math.round((remaining - each) * 100) / 100) };
+      return draft;
+    });
+  }
+
+  function handleDraftFieldChange(idx, key, value) {
+    setMilestoneDraft((prev) => {
+      const draft = prev ? [...prev] : buildDraftFromForm();
+      draft[idx] = { ...draft[idx], [key]: value };
+      return draft;
+    });
+  }
+
+  function saveMilestonesFromDraft() {
+    const draft = Array.isArray(milestoneDraft) ? milestoneDraft : buildDraftFromForm();
     setForm((prev) => ({
       ...prev,
-      total_amount: t,
-      proposed_milestones: [
-        { ...prev.proposed_milestones[0], amount: a },
-        { ...prev.proposed_milestones[1], amount: b },
-        { ...prev.proposed_milestones[2], amount: c },
-      ],
+      proposed_milestones: draft.map((m) => ({
+        title: m.title,
+        amount: Number(m.amount) || 0,
+        start_date: m.start_date || "",
+        end_date: m.end_date || "",
+        notes: m.notes || "",
+      })),
     }));
+    setMilestoneModalOpen(false);
   }
+
+  // Keep draft in sync with Total while modal is open
+  useEffect(() => {
+    if (!milestoneModalOpen) return;
+    setMilestoneDraft((prev) => {
+      const total = Math.max(0, Number(form.total_amount) || 0);
+      if (!prev || prev.length !== 3) return buildDraftFromForm();
+      const sum = prev.reduce((s, m) => s + (Number(m.amount) || 0), 0);
+      if (Math.abs(sum - total) < 0.01) return prev;
+      const [a, b, c] = splitEqually(total);
+      return [
+        { ...prev[0], amount: a, title: "milestone_Advance" },
+        { ...prev[1], amount: b, title: "milestone_Midway" },
+        { ...prev[2], amount: c, title: "milestone_Final" },
+      ];
+    });
+  }, [form.total_amount, milestoneModalOpen]);
 
   // Submit new ticket
   async function handleCreateTicket() {
@@ -443,13 +618,6 @@ export default function MessageInfo({ projectId }) {
       // name + role
       let authParsed = null;
       try { const raw = localStorage.getItem("auth"); authParsed = raw ? JSON.parse(raw) : null; } catch {}
-      const raisedBy =
-        localStorage.getItem("name") ||
-        localStorage.getItem("userName") ||
-        authParsed?.data?.user?.name ||
-        authParsed?.data?.name ||
-        authParsed?.user?.name ||
-        "";
       const roleId = Number(
         localStorage.getItem("role_id") ||
           authParsed?.data?.user?.role_id ||
@@ -460,18 +628,20 @@ export default function MessageInfo({ projectId }) {
 
       const raisedById = getUserIdFromStorage();
       const projectFromNav = location?.state?.project || location?.state || {};
-      const assignedToId = getFreelancerIdFromProject(projectFromNav);
+      const freelancerId = getFreelancerIdFromProject(projectFromNav);
+      const clientId = getClientIdFromProject(projectFromNav);
+      // Assign based on role_id: if role_id === 1 (client) -> send freelancer_id; if role_id === 2 or 3 (freelancer/admin) -> send client id
+      const assignedToId = roleId === 1 ? freelancerId : clientId || freelancerId;
 
       const body = {
         project_id: projectId,
         category: form.category,
-        raised_by: raisedBy,
-        assigned_to: assignedToName,
-        raised_by_id: raisedById || null,
-        assigned_to_id: assignedToId || null,
         role_id: roleId,
         description: form.description,
         attachments: (form.files || []).map((f) => f.name),
+        // IDs per requirement
+        raised_by: raisedById || "",
+        assigned_to: assignedToId || "",
       };
 
       if (form.category === "project_clarification") {
@@ -487,8 +657,27 @@ export default function MessageInfo({ projectId }) {
         body.proposed_milestones = proposed;
       }
 
+      if (form.category === "start_approval") {
+        // Use finalized milestones fetched from backend (read-only)
+        const finalized = (startApproval?.milestones || []).map((m) => ({
+          title: String(m?.title || "").trim(),
+          amount: Number(m?.amount || 0),
+          start_date: String(m?.start_date || "").trim(),
+          end_date: String(m?.end_date || "").trim(),
+          notes: String(m?.notes || "").trim(),
+        }));
+        body.proposed_milestones = [];
+        body.finalized_milestones = finalized;
+        body.payment_details = {
+          method: "Razorpay", // static from frontend
+          currency: "INR", // static from frontend
+          total_amount: Number(startApproval?.total) || finalized.reduce((s, x) => s + (Number(x.amount) || 0), 0),
+        };
+        body.agreement_details = form.agreement_details || "Both parties agree to the milestone terms and delivery schedule.";
+      }
+
       const createEndpoint =
-        form.category === "project_clarification"
+        form.category === "project_clarification" || form.category === "start_approval"
           ? "http://192.168.1.30:8008/tickets-service/create"
           : `${baseURL}/tickets-service/create`;
 
@@ -502,11 +691,67 @@ export default function MessageInfo({ projectId }) {
 
       await Swal.fire({ icon: "success", title: "Created", text: data?.message || "Ticket created successfully" });
       setCreateOpen(false);
+      setUpdateMilestonesMode(false);
+
+      // After creating start_approval: send milestones PDF + Pay Now message to chat
+      try {
+        if (form.category === "start_approval") {
+          const token3 =
+            localStorage.getItem("token") ||
+            localStorage.getItem("accessToken") ||
+            localStorage.getItem("authToken") ||
+            localStorage.getItem("jwt") ||
+            "";
+
+          // Figure out ticket id from API response
+          const newTicketId = data?.data?.ticket_id || data?.ticket_id || data?.data?.id || data?.id;
+
+          // Create a simple PDF-like Blob (fallback to text if PDF generation not available in-browser)
+          const finalized = (startApproval?.milestones || []).map((m) => ({
+            title: String(m?.title || "").trim(),
+            amount: Number(m?.amount || 0),
+            start_date: String(m?.start_date || "").trim(),
+            end_date: String(m?.end_date || "").trim(),
+            notes: String(m?.notes || "").trim(),
+          }));
+          const total = Number(startApproval?.total) || finalized.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+          const lines = [
+            `Milestones Summary for Project ${projectId}`,
+            `Total: ${total}`,
+            "",
+            ...finalized.map((m, i) => `${i + 1}. ${m.title} | ${m.amount} | ${m.start_date} -> ${m.end_date} | ${m.notes}`),
+          ].join("\n");
+          const blob = new Blob([lines], { type: "application/pdf" });
+          const file = new File([blob], "milestones.pdf", { type: "application/pdf" });
+
+          // Send message with file via FormData
+          if (newTicketId) {
+            const fd = new FormData();
+            fd.append("sender_id", String(raisedById || ""));
+            fd.append("sender", String(raisedById || ""));
+            fd.append("role_id", String(roleId || 0));
+            fd.append("text", "Milestones document attached. Click to view. [Pay Now]");
+            fd.append("file", file);
+
+            const sendEndpoint = `http://192.168.1.30:8008/tickets-service/${encodeURIComponent(newTicketId)}/messages`;
+            await fetch(sendEndpoint, {
+              method: "POST",
+              headers: { ...(token3 ? { Authorization: `Bearer ${token3}` } : {}) },
+              body: fd,
+            }).catch(() => {});
+
+            // Refresh chat detail to show the new message
+            try { await loadTicketDetail({ ticket_id: newTicketId }); } catch {}
+          }
+        }
+      } catch {}
+
       setForm({
         category: "",
         description: "",
         files: [],
         total_amount: "",
+        agreement_details: "Both parties agree to the milestone terms and delivery schedule.",
         proposed_milestones: [
           { title: "milestone_Advance", amount: "", start_date: "", end_date: "", notes: "" },
           { title: "milestone_Midway", amount: "", start_date: "", end_date: "", notes: "" },
@@ -536,18 +781,77 @@ export default function MessageInfo({ projectId }) {
     }
   }
 
-  // Delete selected ticket (optional action)
-  async function deleteSelectedTicket() {
-    if (!selectedTicket) return;
-    const resConfirm = await Swal.fire({
-      title: "Delete this ticket?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Delete",
-      cancelButtonText: "Cancel",
-      confirmButtonColor: "#d33",
+  // Submit milestone update (popup -> Done)
+  async function handleSubmitMilestoneUpdate(opts = {}) {
+    if (!selectedTicket) {
+      await Swal.fire({ icon: "error", title: "No ticket selected", text: "Select a ticket to update milestones." });
+      return;
+    }
+    const ticketId = selectedTicket?.ticket_id || selectedTicket?.id || selectedTicket?._id;
+    const userId = getUserIdFromStorage() || localStorage.getItem("userId") || "";
+    if (!ticketId || !userId) {
+      await Swal.fire({ icon: "error", title: "Missing data", text: "Cannot update without ticket or user." });
+      return;
+    }
+
+    // Build milestones from the latest draft if modal is open; else from form state
+    const srcMilestones = (milestoneModalOpen && Array.isArray(milestoneDraft) && milestoneDraft.length)
+      ? milestoneDraft
+      : (form?.proposed_milestones || []);
+
+    const current = srcMilestones.map((m) => ({
+      title: String(m.title || "").trim() || "Milestone",
+      amount: Number(m.amount || 0),
+      start_date: String(m.start_date || "").trim(),
+      end_date: String(m.end_date || "").trim(),
+      notes: String(m.notes || "").trim(),
+    }));
+
+    // If caller provided explicit override, use it as full replacement
+    const fullMilestones = Array.isArray(opts.milestonesOverride)
+      ? opts.milestonesOverride
+      : current.map((m) => ({
+          title: m.title,
+          amount: m.amount,
+          start_date: toISTISO(m.start_date, { endOfDay: false }),
+          end_date: toISTISO(m.end_date, { endOfDay: true }),
+          notes: m.notes,
+        }));
+
+    // Diff against originals to send only changed rows
+    const original = Array.isArray(originalMilestonesRef.current) ? originalMilestonesRef.current : [];
+    const patchMilestones = fullMilestones.filter((m, idx) => {
+      const o = original[idx] || {};
+      const oNorm = {
+        title: String(o.title || o.name || "").trim(),
+        amount: Number(o.amount ?? o.price ?? o.value ?? 0),
+        start_date: String(o.start_date || o.startDate || "").trim(),
+        end_date: String(o.end_date || o.endDate || "").trim(),
+        notes: String(o.notes || o.description || "").trim(),
+      };
+      const cNorm = {
+        title: String(m.title || "").trim(),
+        amount: Number(m.amount || 0),
+        // Compare raw dates without T suffix
+        start_date: String(current[idx]?.start_date || "").trim(),
+        end_date: String(current[idx]?.end_date || "").trim(),
+        notes: String(m.notes || "").trim(),
+      };
+      return (
+        oNorm.title !== cNorm.title ||
+        oNorm.amount !== cNorm.amount ||
+        oNorm.start_date !== cNorm.start_date ||
+        oNorm.end_date !== cNorm.end_date ||
+        oNorm.notes !== cNorm.notes
+      );
     });
-    if (!resConfirm.isConfirmed) return;
+
+    const computedTotal = current.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+    const nextTotal = Number(opts.totalOverride ?? computedTotal) || 0;
+    const originalTotal = Number(originalTotalRef.current ?? 0) || 0;
+    const total_amount = String(nextTotal);
+
+    setUpdatingMilestones(true);
     try {
       const token =
         localStorage.getItem("token") ||
@@ -555,25 +859,34 @@ export default function MessageInfo({ projectId }) {
         localStorage.getItem("authToken") ||
         localStorage.getItem("jwt") ||
         "";
-      const ticketId = selectedTicket?.ticket_id || selectedTicket?.id || selectedTicket?._id;
-      const res = await fetch(`${baseURL}/tickets-service/${encodeURIComponent(ticketId)}`, {
-        method: "DELETE",
-        headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+
+      const url = `http://192.168.1.30:8008/tickets-service/${encodeURIComponent(ticketId)}/milestones/update`;
+      // Backend requires full body: user_id, milestones (full array), total_amount
+      const payload = {
+        user_id: userId,
+        milestones: fullMilestones, // always send full milestones array
+        total_amount: String(nextTotal), // always include total
+      };
+
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Failed to delete ticket");
-      setSelectedTicket(null);
-      setMessages([]);
-      // refresh list
-      const res2 = await fetch(`${baseURL}/tickets-service/project/${encodeURIComponent(projectId)}`);
-      const data2 = await res2.json().catch(() => ({}));
-      const list = Array.isArray(data2) ? data2 : data2?.data || [];
-      setTickets(Array.isArray(list) ? list : []);
-      await Swal.fire({ icon: "success", title: "Deleted", text: "Ticket deleted." });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.message || `Failed: ${res.status}`);
+
+      await Swal.fire({ icon: "success", title: "Milestones updated", text: data?.message || "Milestones saved successfully." });
+      // Reload the page to reflect latest changes
+      window.location.reload();
     } catch (e) {
-      await Swal.fire({ icon: "error", title: "Delete failed", text: e?.message || "Delete failed" });
+      await Swal.fire({ icon: "error", title: "Update failed", text: e?.message || "Failed to update milestones" });
+    } finally {
+      setUpdatingMilestones(false);
     }
   }
 
+ 
   // Close selected ticket
   async function handleCloseTicket() {
     if (!selectedTicket) return;
@@ -750,18 +1063,51 @@ export default function MessageInfo({ projectId }) {
                       <button
                         className="btn btn-outline-primary btn-sm"
                         onClick={() => {
-                          // Reuse create modal UI to update milestones; pre-fill category
+                          // Open the milestone editor directly with existing data and update mode
+                          const sm = Array.isArray(selectedTicket?.proposed_milestones)
+                            ? selectedTicket.proposed_milestones
+                            : Array.isArray(selectedTicket?.milestones)
+                            ? selectedTicket.milestones
+                            : [];
+                          const normalized = sm.map((m) => ({
+                            title: String(m.title || m.name || "").trim() || "Milestone",
+                            amount: Number(m.amount ?? m.price ?? m.value ?? 0),
+                            start_date: String(m.start_date || m.startDate || "").slice(0, 10),
+                            end_date: String(m.end_date || m.endDate || "").slice(0, 10),
+                            notes: String(m.notes || m.description || "").trim(),
+                          }));
+                          const total =
+                            Number(
+                              selectedTicket?.total_amount ??
+                                selectedTicket?.totalAmount ??
+                                normalized.reduce((s, x) => s + (Number(x.amount) || 0), 0)
+                            ) || 0;
+
+                          setUpdateMilestonesMode(true);
+                          // store originals to compare later
+                          originalMilestonesRef.current = normalized;
+                          originalTotalRef.current = total;
                           setForm((prev) => ({
                             ...prev,
                             category: "project_clarification",
+                            total_amount: total,
+                            proposed_milestones: normalized.length ? normalized : prev.proposed_milestones,
                           }));
-                          openCreateModal();
+                          setMilestoneDraft(normalized.length ? normalized : buildDraftFromForm());
+                          setMilestoneModalOpen(true);
                         }}
+                        disabled={String(selectedTicket?.status || "").toLowerCase().includes("close")}
+                        title={String(selectedTicket?.status || "").toLowerCase().includes("close") ? "Ticket is closed" : undefined}
                       >
                         Update Milestone
                       </button>
                     )}
-                    <button className="btn btn-link text-danger text-decoration-none" onClick={handleCloseTicket}>
+                    <button
+                      className="btn btn-link text-danger text-decoration-none"
+                      onClick={handleCloseTicket}
+                      disabled={String(selectedTicket?.status || "").toLowerCase().includes("close")}
+                      title={String(selectedTicket?.status || "").toLowerCase().includes("close") ? "Already closed" : undefined}
+                    >
                       Close Ticket
                     </button>
                   </div>
@@ -833,7 +1179,45 @@ export default function MessageInfo({ projectId }) {
             >
               {m.authorName} · {m.time}
             </div>
+            {/* Attachments (if backend returns attachment URLs) */}
+            {Array.isArray(m.attachments) && m.attachments.length > 0 && (
+              <div className="mb-2 d-flex flex-column gap-1">
+                {m.attachments.map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noreferrer" className={`small ${m.author === "me" ? "text-white" : "text-primary"}`}>
+                    <i className="far fa-paperclip me-1" /> Attachment {i + 1}
+                  </a>
+                ))}
+              </div>
+            )}
             <div style={{ whiteSpace: "pre-wrap" }}>{m.text}</div>
+            {/* Inline Pay Now button if the message includes the cue */}
+            {/\[Pay Now\]/i.test(String(m.text || "")) && (
+              <div className="mt-2">
+                <button type="button" className={`btn btn-sm ${m.author === "me" ? "btn-light" : "btn-outline-primary"}`}
+                  onClick={async () => {
+                    try {
+                      const ticketId = selectedTicket?.ticket_id || selectedTicket?.id || selectedTicket?._id;
+                      const token4 =
+                        localStorage.getItem("token") ||
+                        localStorage.getItem("accessToken") ||
+                        localStorage.getItem("authToken") ||
+                        localStorage.getItem("jwt") ||
+                        "";
+                      const fd = new FormData();
+                      fd.append("sender_id", String(getUserIdFromStorage() || ""));
+                      fd.append("sender", String(getUserNameFromStorage() || ""));
+                      fd.append("role_id", String(0));
+                      fd.append("text", "User tapped Pay Now.");
+                      const sendEndpoint = `http://192.168.1.30:8008/tickets-service/${encodeURIComponent(ticketId)}/messages`;
+                      await fetch(sendEndpoint, { method: "POST", headers: { ...(token4 ? { Authorization: `Bearer ${token4}` } : {}) }, body: fd });
+                      await loadTicketDetail({ ticket_id: ticketId });
+                    } catch {}
+                  }}
+                >
+                  Pay Now
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -908,7 +1292,7 @@ export default function MessageInfo({ projectId }) {
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Create Ticket</h5>
+                <h5 className="modal-title">{updateMilestonesMode ? "Update Milestones" : "Create Ticket"}</h5>
                 <button type="button" className="btn-close" onClick={() => setCreateOpen(false)} />
               </div>
               <div className="modal-body">
@@ -919,112 +1303,161 @@ export default function MessageInfo({ projectId }) {
                 {catLoading && <div className="small text-muted mb-2">Loading categories…</div>}
                 {catError && <div className="alert alert-danger mb-2">{catError}</div>}
 
-                <div className="mb-3">
-                  <label className="form-label">Category</label>
-                  <select
-                    className="form-select"
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  >
-                    <option value="" disabled>Select Category</option>
-                    {categories.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
+                {!updateMilestonesMode && (
+                  <>
+                    <div className="mb-3">
+                      <label className="form-label">Category</label>
+                      <select
+                        className="form-select"
+                        value={form.category}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          setForm({ ...form, category: val });
+                          if (val === "start_approval" && projectId) {
+                            try {
+                              setStartApproval({ loading: true, error: "", milestones: [], total: 0 });
+                              const res = await fetch(`http://192.168.1.30:8008/tickets-service/get-milestones/${encodeURIComponent(projectId)}`);
+                              const data = await res.json().catch(() => ({}));
+                              if (!res.ok) throw new Error(data?.message || `Failed: ${res.status}`);
+                              const payload = data?.data || {};
+                              const finalized = Array.isArray(payload.finalized_milestones) ? payload.finalized_milestones : [];
+                              const total = Number(payload.total_amount) || finalized.reduce((s, m) => s + (Number(m?.amount) || 0), 0);
+                              setStartApproval({ loading: false, error: "", milestones: finalized, total });
+                            } catch (err) {
+                              setStartApproval({ loading: false, error: err?.message || "Failed to fetch milestones", milestones: [], total: 0 });
+                              await Swal.fire({ icon: "error", title: "Milestones", text: err?.message || "Failed to fetch finalized milestones" });
+                            }
+                          }
+                        }}
+                      >
+                        <option value="" disabled>Select Category</option>
+                        {categories.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Description</label>
-                  <textarea
-                    className="form-control"
-                    rows={4}
-                    placeholder="Describe your request"
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  />
-                </div>
+                    <div className="mb-3">
+                      <label className="form-label">Description</label>
+                      <textarea
+                        className="form-control"
+                        rows={4}
+                        placeholder="Describe your request"
+                        value={form.description}
+                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* start_approval: show finalized milestones read-only */}
+                {form.category === "start_approval" && (
+                  <div className="mb-3">
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <h6 className="mb-0">Finalized Milestones</h6>
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="small text-muted me-2">Total: {inr.format(Number(startApproval.total) || 0)}</div>
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary btn-sm"
+                          onClick={() => setFinalizedModalOpen(true)}
+                          disabled={startApproval.loading || !!startApproval.error || (startApproval.milestones || []).length === 0}
+                        >
+                          View details
+                        </button>
+                      </div>
+                    </div>
+                    {startApproval.loading && <div className="small text-muted">Loading milestones…</div>}
+                    {startApproval.error && <div className="alert alert-warning py-2 px-3">{startApproval.error}</div>}
+                    {/* {!startApproval.loading && !startApproval.error && (
+                      <div className="table-responsive">
+                        <table className="table table-bordered align-middle">
+                          <thead className="table-light">
+                            <tr>
+                              <th style={{width: '30%'}}>Title</th>
+                              <th style={{width: '15%'}}>Amount</th>
+                              <th style={{width: '20%'}}>Start</th>
+                              <th style={{width: '20%'}}>End</th>
+                              <th style={{width: '15%'}}>Notes</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(startApproval.milestones || []).length === 0 ? (
+                              <tr><td colSpan={5} className="text-center text-muted">No milestones available</td></tr>
+                            ) : (
+                              startApproval.milestones.map((m, idx) => (
+                                <tr key={idx}>
+                                  <td>
+                                    <input type="text" className="form-control" value={m?.title || ''} readOnly />
+                                  </td>
+                                  <td>
+                                    <div className="input-group"><span className="input-group-text bg-white">₹</span>
+                                      <input type="number" className="form-control" value={Number(m?.amount)||0} readOnly />
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <input type="text" className="form-control" value={formatISTDateTime(m?.start_date)} readOnly />
+                                  </td>
+                                  <td>
+                                    <input type="text" className="form-control" value={formatISTDateTime(m?.end_date)} readOnly />
+                                  </td>
+                                  <td>
+                                    <input type="text" className="form-control" value={m?.notes || ''} readOnly />
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )} */}
+
+                    {/* Agreement details input (only for start_approval) */}
+                    <div className="mt-3">
+                      <label className="form-label">Agreement Details</label>
+                      <textarea
+                        className="form-control"
+                        rows={3}
+                        placeholder="Agreement terms"
+                        value={form.agreement_details}
+                        onChange={(e) => setForm({ ...form, agreement_details: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {form.category === "project_clarification" && (
                   <div className="mb-3">
                     <div className="row g-2 align-items-end">
-                      <div className="col-12 col-md-4">
+                      <div className="col-12 col-md-6">
                         <label className="form-label">Total Amount</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          placeholder="Total"
-                          value={form.total_amount}
-                          onChange={(e) => updateTotalAmount(e.target.value)}
-                        />
+                        <div className="input-group">
+                          <span className="input-group-text bg-white">₹</span>
+                          <input
+                            type="number"
+                            className="form-control"
+                            placeholder="Total"
+                            value={form.total_amount}
+                            onChange={(e) => updateTotalAmount(e.target.value)}
+                          />
+                        </div>
+                        <div className="form-text">Calculated from milestones: <strong>{inr.format(milestonesTotal || 0)}</strong></div>
+                      </div>
+                      <div className="col-12 col-md-6 text-md-end mt-3 mt-md-0">
+                       <button
+  type="button"
+  className="btn btn-outline-primary d-inline-flex align-items-center"
+  onClick={openMilestoneCreator}
+  disabled={!Number(form.total_amount)}
+>
+  <i className="far fa-layer-plus me-2" /> Create Milestones
+</button>
+
                       </div>
                     </div>
-
-                    <div className="table-responsive mt-3">
-                      <table className="table align-middle">
-                        <thead>
-                          <tr>
-                            <th style={{ minWidth: 160 }}>Title</th>
-                            <th style={{ width: 160 }}>Amount</th>
-                            <th style={{ width: 170 }}>Start Date</th>
-                            <th style={{ width: 170 }}>End Date</th>
-                            <th>Notes</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {form.proposed_milestones.map((m, idx) => (
-                            <tr key={idx}>
-                              <td>
-                                <input type="text" className="form-control" value={m.title} disabled />
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  className="form-control"
-                                  value={m.amount}
-                                  onChange={(e) => rebalanceMilestones(idx, e.target.value)}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="date"
-                                  className="form-control"
-                                  value={m.start_date}
-                                  onChange={(e) => setForm((prev) => {
-                                    const pm = [...prev.proposed_milestones];
-                                    pm[idx] = { ...pm[idx], start_date: e.target.value };
-                                    return { ...prev, proposed_milestones: pm };
-                                  })}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="date"
-                                  className="form-control"
-                                  value={m.end_date}
-                                  onChange={(e) => setForm((prev) => {
-                                    const pm = [...prev.proposed_milestones];
-                                    pm[idx] = { ...pm[idx], end_date: e.target.value };
-                                    return { ...prev, proposed_milestones: pm };
-                                  })}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  placeholder="Notes"
-                                  value={m.notes || ""}
-                                  onChange={(e) => setForm((prev) => {
-                                    const pm = [...prev.proposed_milestones];
-                                    pm[idx] = { ...pm[idx], notes: e.target.value };
-                                    return { ...prev, proposed_milestones: pm };
-                                  })}
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    {/* Progress: show how much of total is currently allocated in form */}
+                    <div className="mt-2 small text-muted">
+                      {inr.format(milestonesTotal || 0)} of {inr.format(Number(form.total_amount) || 0)} allocated
                     </div>
                   </div>
                 )}
@@ -1036,13 +1469,221 @@ export default function MessageInfo({ projectId }) {
                     className="form-control"
                     multiple
                     onChange={(e) => setForm({ ...form, files: Array.from(e.target.files || []) })}
+                    disabled={updateMilestonesMode}
                   />
                   <div className="form-text">Optional. You can attach multiple files.</div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-outline-secondary" onClick={() => setCreateOpen(false)}>Cancel</button>
-                <button className="btn btn-dark" onClick={handleCreateTicket}>Create</button>
+                <button
+                  className="btn btn-outline-secondary"
+                  onClick={() => {
+                    setCreateOpen(false);
+                    setUpdateMilestonesMode(false);
+                  }}
+                >
+                  Cancel
+                </button>
+                {updateMilestonesMode ? (
+                  <button className="btn btn-primary" onClick={handleSubmitMilestoneUpdate} disabled={updatingMilestones}>
+                    {updatingMilestones ? "Updating…" : "Done"}
+                  </button>
+                ) : (
+                  <button className="btn btn-dark" onClick={handleCreateTicket}>Create</button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Finalized Milestones View Modal (read-only) */}
+      {finalizedModalOpen && (
+        <div className="modal fade show" style={{ display: "block", background: "rgba(0,0,0,0.45)" }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Milestone details</h5>
+                <button type="button" className="btn-close" onClick={() => setFinalizedModalOpen(false)} />
+              </div>
+              <div className="modal-body">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <div className="fw-semibold">Finalized Milestones</div>
+                  <div className="small text-muted">Total: {inr.format(Number(startApproval.total) || 0)}</div>
+                </div>
+                {/* Reuse the creation modal's grid design, but read-only */}
+                <div className="d-none d-md-grid" style={{
+                  display: "grid",
+                  gridTemplateColumns: "2fr 1fr 1.3fr 1.3fr 1.4fr",
+                  gap: 12,
+                  padding: "12px 12px",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 12,
+                  background: "#f9fafb"
+                }}>
+                  <div className="fw-semibold small">Title</div>
+                  <div className="fw-semibold small">Amount</div>
+                  <div className="fw-semibold small">Start Date</div>
+                  <div className="fw-semibold small">End Date</div>
+                  <div className="fw-semibold small">Description</div>
+                </div>
+                <div className="mt-2 d-flex flex-column gap-2">
+                  {(startApproval.milestones || []).length === 0 ? (
+                    <div className="text-center text-muted">No milestones available</div>
+                  ) : (
+                    startApproval.milestones.map((m, idx) => (
+                      <div key={idx} className="p-2" style={{ border: "1px solid #e5e7eb", borderRadius: 12 }}>
+                        <div className="d-grid" style={{ gridTemplateColumns: "2fr 1fr 1.3fr 1.3fr 1.4fr", gap: 12 }}>
+                          <input type="text" className="form-control" value={m?.title || ''} readOnly />
+                          <div className="input-group"><span className="input-group-text bg-white">₹</span>
+                            <input type="number" className="form-control" value={Number(m?.amount)||0} readOnly />
+                          </div>
+                          <input type="text" className="form-control" value={formatISTDateTime(m?.start_date)} readOnly />
+                          <input type="text" className="form-control" value={formatISTDateTime(m?.end_date)} readOnly />
+                          <input type="text" className="form-control" value={m?.notes || ''} readOnly />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-primary" onClick={() => setFinalizedModalOpen(false)}>Done</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Milestone Creation Modal (Step 2) */}
+      {milestoneModalOpen && (
+        <div className="modal fade show" style={{ display: "block", background: "rgba(0,0,0,0.45)" }}>
+          <div className="modal-dialog modal-xl modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Create Milestones</h5>
+                <button type="button" className="btn-close" onClick={() => setMilestoneModalOpen(false)} />
+              </div>
+              <div className="modal-body">
+                <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                  <div className="fw-semibold">Total Budget: {inr.format(Number(form.total_amount) || 0)}</div>
+                  <div className="d-flex align-items-center gap-2">
+                    <label className="small mb-0">Edit Total</label>
+                    <div className="input-group" style={{ maxWidth: 220 }}>
+                      <span className="input-group-text bg-white">₹</span>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={form.total_amount}
+                        onChange={(e) => setForm((prev) => ({ ...prev, total_amount: Math.max(0, Number(e.target.value) || 0) }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="text-muted small ms-auto">
+                    {inr.format((milestoneDraft || []).reduce((s, m) => s + (Number(m?.amount) || 0), 0))}
+                    {" "}of {inr.format(Number(form.total_amount) || 0)} allocated
+                  </div>
+                </div>
+
+                <div className="d-none d-md-grid" style={{
+                  display: "grid",
+                  gridTemplateColumns: "2fr 1fr 1.3fr 1.3fr 1.4fr",
+                  gap: 12,
+                  padding: "12px 12px",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 12,
+                  background: "#f9fafb"
+                }}>
+                  <div className="fw-semibold small">Title</div>
+                  <div className="fw-semibold small">Amount</div>
+                  <div className="fw-semibold small">Start Date</div>
+                  <div className="fw-semibold small">End Date</div>
+                  <div className="fw-semibold small">Description</div>
+                </div>
+
+                <div className="mt-2 d-flex flex-column gap-2">
+                  {(milestoneDraft || buildDraftFromForm()).map((m, idx) => (
+                    <div key={idx} className="p-2" style={{ border: "1px solid #e5e7eb", borderRadius: 12 }}>
+                      <div className="d-grid" style={{ gridTemplateColumns: "2fr 1fr 1.3fr 1.3fr 1.4fr", gap: 12 }}>
+                        {/* Title: static labels */}
+                        <input
+                          type="text"
+                          className="form-control rounded"
+                          value={m.title}
+                          readOnly
+                        />
+
+                        {/* Amount */}
+                        <div className="input-group">
+                          <span className="input-group-text bg-white">₹</span>
+                          <input
+                            type="number"
+                            className="form-control rounded"
+                            placeholder="0.00"
+                            value={m.amount}
+                            onChange={(e) => handleDraftAmountChange(idx, e.target.value)}
+                          />
+                        </div>
+
+                        {/* Start Date */}
+                        <div className="input-group">
+                          <span className="input-group-text bg-white"><i className="far fa-calendar" /></span>
+                          <input
+                            type="date"
+                            className="form-control rounded"
+                            value={m.start_date}
+                            onChange={(e) => handleDraftFieldChange(idx, "start_date", e.target.value)}
+                          />
+                        </div>
+
+                        {/* End Date */}
+                        <div className="input-group">
+                          <span className="input-group-text bg-white"><i className="far fa-calendar" /></span>
+                          <input
+                            type="date"
+                            className="form-control rounded"
+                            value={m.end_date}
+                            onChange={(e) => handleDraftFieldChange(idx, "end_date", e.target.value)}
+                          />
+                        </div>
+
+                        {/* Notes */}
+                        <input
+                          type="text"
+                          className="form-control rounded"
+                          placeholder="Notes (required)"
+                          value={m.notes || ""}
+                          onChange={(e) => handleDraftFieldChange(idx, "notes", e.target.value)}
+                        />
+                      </div>
+
+                      {/* Mobile inline summary */}
+                      <div className="d-md-none mt-2 small text-muted">
+                        {m.title} · {m.start_date || "Start"} → {m.end_date || "End"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-outline-secondary" onClick={() => setMilestoneModalOpen(false)}>Cancel</button>
+                <button
+                  className="btn btn-dark"
+                  onClick={() => {
+                    // Save into form first
+                    saveMilestonesFromDraft();
+                    // Then immediately call backend if we're in update mode
+                    setTimeout(() => {
+                      if (updateMilestonesMode) {
+                        const totalOverride = Number(form.total_amount) || 0;
+                        handleSubmitMilestoneUpdate({ totalOverride });
+                      }
+                    }, 0);
+                  }}
+                  disabled={!Number(form.total_amount) || updatingMilestones}
+                >
+                  {updateMilestonesMode ? (updatingMilestones ? "Updating…" : "Update Milestones") : "Save Milestones"}
+                </button>
               </div>
             </div>
           </div>
