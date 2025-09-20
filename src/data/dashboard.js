@@ -19,7 +19,7 @@ export const dasboardNavigation = [
   // },
   {
     id: 4,
-    name: "Working Projects",
+    name: "Manage Projects",
     icon: "flaticon-chat",
     iconImg: "/icons/project.png",
     path: "/working-projects",
@@ -69,7 +69,7 @@ export const dasboardNavigation = [
   // },
   {
     id: 11,
-    name: "Manage Project",
+    name: "Manage Tickets",
     icon: "flaticon-content",
     path: "/manage-projects",
   },

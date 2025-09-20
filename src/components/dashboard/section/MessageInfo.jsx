@@ -1222,15 +1222,17 @@ export default function MessageInfo({ projectId }) {
             {(() => {
               // Conditions based on your requirement:
               // - message.role_id === 3 (system/enterprise)
-              // - text equals the cue
-              // - attachments present (PDF)
+              // - text contains payment cue or legacy cue
               // - sender_id !== current user
               const meId = String(getUserIdFromStorage() || "");
               const isFromOther = String(m?.senderId || "") !== meId;
-              const isCue = /Ticket created successfully\. Preparing details…/i.test(String(m.text || ""));
+              const textStr = String(m.text || "");
+              const matchAmt = textStr.match(/TOTAL_AMOUNT_REQUESTED\s*=\s*([0-9]+(?:\.[0-9]+)?)/i);
+              const requestedAmount = matchAmt ? Number(matchAmt[1]) : null;
+              const isCue = /Payment requested/i.test(textStr) || /Ticket created successfully\. Preparing details…/i.test(textStr);
               const hasAttachment = Array.isArray(m.attachments) && m.attachments.length > 0;
               const isSystemMsg = Number(m?.roleId || 0) === 3;
-              const shouldSuggestPay = isSystemMsg && isCue && hasAttachment && isFromOther;
+              const shouldSuggestPay = isSystemMsg && isCue && isFromOther && (hasAttachment || requestedAmount != null);
               if (!shouldSuggestPay) return null;
 
               // Only show to client role (role_id === 1)
@@ -1253,7 +1255,7 @@ export default function MessageInfo({ projectId }) {
               return (
                 <div className="mt-2">
                   <div className={`small mb-2 ${m.author === "me" ? "text-white-50" : "text-muted"}`}>
-                    Payment requested for this project. You can proceed to pay now.
+                    Payment requested for this project{requestedAmount != null ? `: ${inr.format(Number(requestedAmount) || 0)}` : ""}. You can proceed to pay now.
                   </div>
                   <button type="button" className={`btn btn-sm ${m.author === "me" ? "btn-light" : "btn-outline-primary"}`}
                     onClick={async () => {
@@ -1298,7 +1300,8 @@ export default function MessageInfo({ projectId }) {
                         const dataM = await resM.json().catch(() => ({}));
                         const payload = dataM?.data || {};
                         const finalized = Array.isArray(payload.finalized_milestones) ? payload.finalized_milestones : [];
-                        const totalAmount = Number(payload.total_amount) || finalized.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+                        const computedTotal = Number(payload.total_amount) || finalized.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+                        const totalAmount = requestedAmount != null ? Number(requestedAmount) : computedTotal;
 
                         const userId = localStorage.getItem("userId") || "";
                         const userName = localStorage.getItem("name") || "";
@@ -1729,7 +1732,13 @@ export default function MessageInfo({ projectId }) {
                     {updatingMilestones ? "Updating…" : "Done"}
                   </button>
                 ) : (
-                  <button className="btn btn-dark" onClick={handleCreateTicket}>Create</button>
+                  <button
+                    className="btn btn-dark"
+                    onClick={handleCreateTicket}
+                    disabled={form.category === "start_approval" && startApproval.loading}
+                  >
+                    {form.category === "start_approval" && startApproval.loading ? "Fetching…" : "Create"}
+                  </button>
                 )}
               </div>
             </div>

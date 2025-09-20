@@ -173,6 +173,8 @@ export default function RoutesComponent() {
           <Route path="proposal" element={<DasbPageProposal />} />
           <Route path="saved" element={<DasbPageSaved />} />
           <Route path="message" element={<DasbPageMessage />} />
+          {/* Alias to support /dashboard/message deep link */}
+          <Route path="dashboard/message" element={<DasbPageMessage />} />
           <Route path="reviews" element={<DasbPageReviews />} />
           <Route path="wallet" element={<DashboardWalletPage />} />
           <Route path="invoice" element={<DasbPageInvoice />} />

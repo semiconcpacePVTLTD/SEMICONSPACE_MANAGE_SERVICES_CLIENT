@@ -91,12 +91,12 @@ export default function WorkingProjectInfo() {
 
     const freelancerId = getFreelancerIdFromStorage();
 
-    // Per requirement: call ActiveAllProject; send freelancerId as query param (not in body) for roles 2/3
+    // Per requirement: pass id in query only (do not send in body)
+    // role_id === 1 -> send userId; role_id === 2/3 -> send freelancerId
     const baseUrl = "http://192.168.1.222:9006/project-service/userFreelancerActiveAllProject";
     const url = roleId === 1
-      ? baseUrl
+      ? `${baseUrl}?userId=${encodeURIComponent(userId || "")}`
       : `${baseUrl}?freelancerId=${encodeURIComponent(freelancerId || userId || "")}`;
-    const body = roleId === 1 ? { userId: userId } : {};
 
     let mounted = true;
     setLoading(true);
@@ -105,7 +105,6 @@ export default function WorkingProjectInfo() {
     fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
     })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));

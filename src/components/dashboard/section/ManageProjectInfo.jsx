@@ -174,6 +174,28 @@ fetch(url, {
 
   return (
     <>
+      <style>{`
+        .ud-btn.btn-dark.default-box-shadow2:disabled,
+        .ud-btn.btn-dark.default-box-shadow2.disabled {
+          background-color: #adb5bd !important;
+          border-color: #adb5bd !important;
+          color: #fff !important;
+          opacity: 1 !important;
+          cursor: not-allowed !important;
+        }
+        .btn-outline-success:disabled,
+        .btn-outline-danger:disabled {
+          color: #6c757d !important;
+          border-color: #ced4da !important;
+          background-color: #e9ecef !important;
+          opacity: 1 !important;
+          cursor: not-allowed !important;
+        }
+        .btn-outline-success:disabled i,
+        .btn-outline-danger:disabled i {
+          color: #6c757d !important;
+        }
+      `}</style>
       <div className="dashboard__content hover-bgc-color">
         <div className="row pb40">
           <div className="col-lg-12">
@@ -239,6 +261,7 @@ fetch(url, {
                           <ManageProjectCard
                             key={p._id || p.projectId}
                             project={p}
+                            actionsMode="tickets"
                           />
                         ))}
                     </tbody>
