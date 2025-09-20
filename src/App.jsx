@@ -43,8 +43,10 @@ import Footer12 from "@/components/footer/Footer12";
 import Footer14 from "@/components/footer/Footer14";
 import Footer15 from "@/components/footer/Footer15";
 import Footer18 from "@/components/footer/Footer18";
+import Footer18WithServices from "@/components/footer/Footer18WithServices";
 import Footer20 from "@/components/footer/Footer20";
 import WOW from "wow.js";
+import { ServicesProvider } from "@/contexts/ServicesContext";
 
 import Routes from "./Routes";
 import ScrollTopBehaviour from "./components/common/ScrollTopBehaviour";

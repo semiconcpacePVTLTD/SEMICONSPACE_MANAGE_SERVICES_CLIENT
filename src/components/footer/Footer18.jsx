@@ -1,5 +1,5 @@
 import { about, category, support } from "@/data/footer";
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import FooterSocial5 from "./FooterSocial5";
 import FooterSelect2 from "./FooterSelect2";
 import { Link } from "react-router-dom";
@@ -7,9 +7,50 @@ import FooterSocial6 from "./FooterSocial6";
 import Swal from 'sweetalert2';
 import SubscriptionManager, { validateEmail } from '../../utils/subscriptionManager';
 
-export default function Footer18() {
+export default function Footer18({ services = [] }) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [dynamicCategories, setDynamicCategories] = useState([]);
+
+  // Extract unique categories from services and create dynamic category links
+  const categoriesToDisplay = useMemo(() => {
+    try {
+      // Handle different service data structures
+      const serviceList = Array.isArray(services)
+        ? services
+        : services?.data && Array.isArray(services.data)
+          ? services.data
+          : [];
+
+      if (serviceList.length === 0) {
+        // Fallback to static categories if no services available
+        return category;
+      }
+
+      // Extract unique categories from services
+      const uniqueCategories = new Set();
+      serviceList.forEach(service => {
+        if (service.category && service.category.trim()) {
+          uniqueCategories.add(service.category.trim());
+        }
+      });
+
+      // Convert to the format expected by the footer (with id and path)
+      const dynamicCategoryList = Array.from(uniqueCategories)
+        .slice(0, 9) // Limit to 9 categories to match original design
+        .map((categoryName, index) => ({
+          id: index + 1,
+          name: categoryName,
+          path: `/service-2?category=${encodeURIComponent(categoryName)}`
+        }));
+
+      // If we have dynamic categories, use them; otherwise fallback to static
+      return dynamicCategoryList.length > 0 ? dynamicCategoryList : category;
+    } catch (error) {
+      console.error('Error processing categories:', error);
+      return category; // Fallback to static categories on error
+    }
+  }, [services]);
 
   const handleEmailChange = (e) => {
     setEmail(e.target.value);
@@ -121,18 +162,7 @@ export default function Footer18() {
           </div>
         </div>
         <div className="row">
-          <div className="col-sm-6 col-lg-3">
-            <div className="link-style1 mb-4 mb-sm-5">
-              <h5 className="text-white mb15">Categories</h5>
-              <ul className="ps-0">
-                {category.map((item, i) => (
-                  <li key={i}>
-                    <Link to={item.path}>{item.name}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+
           <div className="col-sm-6 col-lg-3">
             <div className="link-style1 mb-4 mb-sm-5">
               <h5 className="text-white mb15">Support</h5>

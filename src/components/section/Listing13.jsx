@@ -91,11 +91,7 @@ export default function Listing13({ freelancers = [], isLoading = false, skeleto
     <>
       <section className="pt30 pb90">
         <div className="container">
-          {isLoading ? (
-            <ListingOptionSkeleton />
-          ) : (
-            <ListingOption6 freelancers={normalized} />
-          )}
+
           <div className="row">
             {isLoading
               ? Array.from({ length: skeletonCount }).map((_, i) => (
