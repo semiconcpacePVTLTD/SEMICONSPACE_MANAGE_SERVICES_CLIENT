@@ -61,6 +61,7 @@ import DasbPageManageJobs from "./pages/dashboard/manage-jobs";
 import DasbPageManageService from "./pages/dashboard/manage-services";
 import DasbPageManageProjects from "./pages/dashboard/manage-projects";
 import DasbPageCreateProject from "./pages/dashboard/create-projects";
+import DashboardWorkingProjectsPage from "./pages/dashboard/working-projects";
 import DasbPageMyProfile from "./pages/dashboard/my-profile";
 import LoginPage from "./pages/auth/login";
 import EmploeePage1 from "./pages/employee/employee-1";
@@ -180,6 +181,7 @@ export default function RoutesComponent() {
           <Route path="manage-services" element={<DasbPageManageService />} />
           <Route path="manage-jobs" element={<DasbPageManageJobs />} />
           <Route path="manage-projects" element={<DasbPageManageProjects />} />
+          <Route path="working-projects" element={<DashboardWorkingProjectsPage />} />
           <Route path="add-services" element={<DasbPageDashboard />} />
           <Route path="create-projects" element={<DasbPageCreateProject />} />
           <Route path="my-profile" element={<DasbPageMyProfile />} />

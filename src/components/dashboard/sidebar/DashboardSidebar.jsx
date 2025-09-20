@@ -39,8 +39,23 @@ export default function DashboardSidebar({ profile }) {
     : Number(roleIdsRaw) === 2;
 
   // Filter: show Wallet only for freelancers; others see all except Wallet
+  // Wallet visible for role_id 2 or 3
   const navigation = dasboardNavigation.filter((item) => {
-    if (item.name === "Wallet" && !isFreelancer) return false;
+    // derive role ids from profile or localStorage
+    const roleIds = (() => {
+      const fromProfile = profile?.profile?.role_id;
+      if (fromProfile) return Array.isArray(fromProfile) ? fromProfile.map(Number) : [Number(fromProfile)];
+      try {
+        const auth = JSON.parse(localStorage.getItem("auth") || "null");
+        const val = auth?.data?.role_id ?? auth?.data?.user?.role_id ?? auth?.role_id ?? auth?.user?.role_id;
+        if (val == null) return [];
+        return Array.isArray(val) ? val.map(Number) : [Number(val)];
+      } catch {
+        return [];
+      }
+    })();
+    const canSeeWallet = roleIds.includes(2) || roleIds.includes(3);
+    if (item.name === "Wallet" && !canSeeWallet) return false;
     return true;
   });
 
@@ -82,7 +97,11 @@ export default function DashboardSidebar({ profile }) {
                 to={item.path}
                 className={`items-center ${effectivePath === item.path ? "-is-active" : ""}`}
               >
-                <i className={`${item.icon} mr15`} />
+                {item.iconImg ? (
+                  <img src={item.iconImg} alt="icon" className="mr15" style={{ width: 24, height: 24 }} />
+                ) : (
+                  <i className={`${item.icon} mr15`} />
+                )}
                 {item.name}
               </Link>
             )}

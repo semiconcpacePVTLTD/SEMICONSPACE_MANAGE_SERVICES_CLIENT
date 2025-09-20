@@ -142,7 +142,8 @@ function App() {
               !pathname.startsWith("/dashboard") &&
               pathname !== "/service-7" &&
               pathname !== "/invoices" &&
-              pathname !== "/wallet" && <Footer18 />
+              pathname !== "/wallet" &&
+              pathname !== "/working-projects" && <Footer18 />
             )}
 
             {/* bottom to top */}
