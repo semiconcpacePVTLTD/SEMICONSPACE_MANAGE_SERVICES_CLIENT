@@ -2,7 +2,7 @@
 import { Link, useNavigate } from "react-router-dom";
 // eslint-disable-next-line no-unused-vars
 import React, { useState } from "react";
-import HeroSearch1 from "../element/HeroSearch1";
+import HeroSearchEnhanced from "../element/HeroSearchEnhanced";
 
 const roleOptions = [
   "Graphics & Design",
@@ -12,7 +12,7 @@ const roleOptions = [
   "Programming & Tech",
 ];
 
-export default function Hero18({ service, services }) {
+export default function Hero18({ service, services, freelancers }) {
   // Make popular tags dynamic from services
   const popularTags = services && services.length > 0
     ? services.slice(0, 6).map(s => ({ name: s.name || s.title || "Service", id: s.uuid || s.id }))
@@ -22,8 +22,15 @@ export default function Hero18({ service, services }) {
 
   const onSearch = (e) => {
     e.preventDefault();
-    // Simple navigation example; adjust as needed
-    navigate("/project-1");
+    // Build search parameters
+    const searchParams = new URLSearchParams();
+
+    if (selectedRole) {
+      searchParams.set('category', selectedRole);
+    }
+
+    // Navigate to services page with search parameters
+    navigate(`/service-2?${searchParams.toString()}`);
   };
 
   return (
@@ -60,7 +67,10 @@ export default function Hero18({ service, services }) {
                 <div className="row">
                   <div className="col-md-5 col-lg-6 col-xl-6">
                     <div className="advance-search-field mb10-sm">
-                      <HeroSearch1 />
+                      <HeroSearchEnhanced
+                        services={services || []}
+                        freelancers={freelancers || []}
+                      />
                     </div>
                   </div>
                   <div className="col-md-4 col-lg-4 col-xl-3">

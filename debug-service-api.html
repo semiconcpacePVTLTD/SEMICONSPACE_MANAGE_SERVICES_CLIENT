@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Service API Debug</title>
+    <script>
+      async function testServiceAPI() {
+        const serviceId = "68ca7d1662f40bf58f51da25y";
+        const apiUrl =
+          "http://192.168.1.222:9003/catalog-service/getServiceById";
+        const url = `${apiUrl}?id=${encodeURIComponent(serviceId)}`;
+
+        console.log("Testing URL:", url);
+
+        try {
+          const response = await fetch(url);
+          console.log("Response status:", response.status);
+          console.log("Response headers:", response.headers);
+
+          const data = await response.json();
+          console.log("Response data:", data);
+
+          document.getElementById("result").innerHTML = `
+                    <h3>API Response:</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>URL:</strong> ${url}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+        } catch (error) {
+          console.error("Error:", error);
+          document.getElementById("result").innerHTML = `
+                    <h3>Error:</h3>
+                    <p>${error.message}</p>
+                    <p><strong>URL:</strong> ${url}</p>
+                `;
+        }
+      }
+
+      window.onload = function () {
+        testServiceAPI();
+      };
+    </script>
+  </head>
+  <body>
+    <h1>Service API Debug Test</h1>
+    <p>Testing service ID: 68ca7d1662f40bf58f51da25y</p>
+    <div id="result">Loading...</div>
+  </body>
+</html>
