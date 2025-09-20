@@ -1287,7 +1287,7 @@ export default function MessageInfo({ projectId }) {
                         const sendEndpoint = `${baseURL}/tickets-service/${encodeURIComponent(ticketId)}/messages`;
                         await fetch(sendEndpoint, { method: "POST", headers: { ...(token4 ? { Authorization: `Bearer ${token4}` } : {}) }, body: fd });
 
-                        // Payment create + verify (server-side Razorpay flow)
+                        // Payment flow
                         const hostAdm = import.meta.env.VITE_BACKEND_HOST_ADMIN;
                         const payPort = import.meta.env.VITE_BACKEND_PAYMENT_PORT;
                         if (!hostAdm || !payPort) throw new Error("Payment service env not configured");
@@ -1321,6 +1321,7 @@ export default function MessageInfo({ projectId }) {
                           } catch {}
                         }
 
+                        // Create order
                         const createRes = await fetch(`${paymentBase}/payment-service/createPayment`, {
                           method: "POST",
                           headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -1340,25 +1341,107 @@ export default function MessageInfo({ projectId }) {
                         const createData = await createRes.json().catch(() => ({}));
                         if (!createRes.ok) throw new Error(createData?.message || `Create failed: ${createRes.status}`);
 
-                        const verifyRes = await fetch(`${paymentBase}/payment-service/verifyPayment`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json", Accept: "application/json" },
-                          body: JSON.stringify({
-                            razorpay_order_id: createData?.data?.razorpayOrder?.id,
-                            razorpay_payment_id: createData?.data?.orderId,
-                            razorpay_signature: createData?.data?.razorpaySignature,
-                          }),
-                        });
-                        const verifyData = await verifyRes.json().catch(() => ({}));
-                        if (!verifyRes.ok) throw new Error(verifyData?.message || `Verify failed: ${verifyRes.status}`);
+                        const orderId = createData?.data?.razorpayOrder?.id;
+                        if (!orderId) throw new Error("Order ID not received");
 
-                        // Replace the temp message with success status
-                        setMessages((prev) => prev.map((msg) => msg.id === tempId ? { ...msg, text: "Payment successful.", time: formatISTDateTime(new Date().toISOString()) } : msg));
-                        await Swal.fire({ icon: "success", title: "Payment verified", text: verifyData?.message || "Success" });
+                        // Razorpay options
+                        const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+                        if (!razorpayKey) {
+                          throw new Error("Razorpay key missing. Set VITE_RAZORPAY_KEY_ID in .env");
+                        }
+                        const options = {
+                          key: razorpayKey,
+                          amount: Math.round(totalAmount * 100),
+                          currency: 'INR',
+                          name: 'Your Company',
+                          description: 'Payment for project',
+                          order_id: orderId,
+                          handler: async function (response) {
+                            try {
+                              // Verify payment
+                              const verifyRes = await fetch(`${paymentBase}/payment-service/verifyPayment`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                                body: JSON.stringify({
+                                  razorpay_order_id: response.razorpay_order_id,
+                                  razorpay_payment_id: response.razorpay_payment_id,
+                                  razorpay_signature: response.razorpay_signature,
+                                }),
+                              });
+                              const verifyData = await verifyRes.json().catch(() => ({}));
+                              if (!verifyRes.ok) throw new Error(verifyData?.message || `Verify failed: ${verifyRes.status}`);
+
+                              // Send message with success (user-friendly text)
+                              const senderName2 = getUserNameFromStorage() || "";
+                              const verified = verifyData?.data || {};
+                              const friendlyTextParts = [
+                                "Payment verified successfully.",
+                                verified.total_amount != null ? `Amount: ${inr.format(Number(verified.total_amount) || 0)}.` : "",
+                                verified.verifiedAt ? `Verified at: ${formatISTDateTime(verified.verifiedAt)}.` : "",
+                                verified.status ? `Status: ${String(verified.status).toUpperCase()}.` : "",
+                                verified.projectId ? `Project: ${shortenId(verified.projectId)}.` : "",
+                              ];
+                              const body = {
+                                sender_id: getUserIdFromStorage() || "",
+                                sender: senderName2,
+                                role_id: 1,
+                                text: friendlyTextParts.filter(Boolean).join(" "),
+                              };
+                              await fetch(sendEndpoint, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", Accept: "application/json", ...(token4 ? { Authorization: `Bearer ${token4}` } : {}) },
+                                body: JSON.stringify(body),
+                              });
+
+                              // Update temp message
+                              setMessages((prev) => prev.map((msg) => msg.id === tempId ? { ...msg, text: "Payment successful.", time: formatISTDateTime(new Date().toISOString()) } : msg));
+                              await Swal.fire({ icon: "success", title: "Payment verified", text: verifyData?.message || "Success" });
+                            } catch (e) {
+                              setMessages((prev) => prev.map((msg) => msg.id === tempId ? { ...msg, text: `Payment failed: ${e?.message || "Unknown error"}` } : msg));
+                              await Swal.fire({ icon: "error", title: "Payment", text: e?.message || "Failed to process payment" });
+                              // Reload to fully recover UI after payment verification errors
+                              window.location.reload();
+                            } finally {
+                              // Refresh conversation
+                              try {
+                                await loadTicketDetail({ ticket_id: ticketId });
+                              } catch {}
+                            }
+                          },
+                          prefill: {
+                            name: userName,
+                            email: userEmail,
+                          },
+                          theme: {
+                            color: '#2563eb',
+                          },
+                        };
+
+                        // Open Razorpay modal
+                        const rzp = new window.Razorpay(options);
+                        // Handle explicit payment failure events to avoid blank screen
+                        try {
+                          rzp.on("payment.failed", async (response) => {
+                            // reflect failure in chat UI
+                            setMessages((prev) =>
+                              prev.map((msg) =>
+                                msg.id === tempId
+                                  ? { ...msg, text: `Payment failed: ${response?.error?.description || "Unknown error"}` }
+                                  : msg
+                              )
+                            );
+                            await Swal.fire({ icon: "error", title: "Payment failed", text: response?.error?.description || "Payment could not be completed" });
+                            // Reload to recover UI state if any error leaves blank screen
+                            window.location.reload();
+                          });
+                        } catch {}
+                        rzp.open();
                       } catch (e) {
                         // Replace the temp message with failure status
                         setMessages((prev) => prev.map((msg) => msg.id === tempId ? { ...msg, text: `Payment failed: ${e?.message || "Unknown error"}` } : msg));
                         await Swal.fire({ icon: "error", title: "Payment", text: e?.message || "Failed to process payment" });
+                        // Reload to recover from any unexpected payment flow error that may blank the page
+                        window.location.reload();
                       } finally {
                         // Refresh conversation to reflect any backend messages
                         try {
