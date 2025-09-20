@@ -20,6 +20,7 @@ const metadata = {
 
 export default function HomePage18() {
   const [services, setServices] = useState([]);
+  const [freelancers, setFreelancers] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
   const [loading, setLoading] = useState(true);
   const [servicesLoaded, setServicesLoaded] = useState(false);
@@ -49,7 +50,26 @@ export default function HomePage18() {
       }
     };
 
+    const fetchFreelancers = async () => {
+      try {
+        const host = import.meta.env.VITE_BACKEND_HOST || "192.168.1.30";
+        const port = import.meta.env.VITE_BACKEND_PROFILE_API_PORT || import.meta.env.VITE_BACKEND_PROFILE_PORT || "8002";
+        const url = `http://${host}:${port}/profile-service/freelance`;
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Failed to fetch freelancers");
+
+        const json = await response.json();
+        const freelancerData = json?.data || [];
+        setFreelancers(freelancerData);
+      } catch (error) {
+        console.error("Error fetching freelancers:", error);
+        setFreelancers([]);
+      }
+    };
+
     fetchServices();
+    fetchFreelancers();
   }, []);
 
   return (
@@ -57,7 +77,7 @@ export default function HomePage18() {
       <MetaComponent meta={metadata} />
       <Header19 service={selectedService} services={services} />
       <div className="body_content">
-        <Hero18 services={services} />
+        <Hero18 services={services} freelancers={freelancers} />
         <BrowserCategory3 />
 
         {/* Lazy loaded Trending Services with shimmer */}
