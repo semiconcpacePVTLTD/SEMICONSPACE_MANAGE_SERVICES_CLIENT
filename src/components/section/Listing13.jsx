@@ -1,3 +1,4 @@
+import { useState } from "react";
 import listingStore from "@/store/listingStore";
 import FreelancerCard1 from "../card/FreelancerCard1";
 import FreelancerCardSkeleton from "../card/FreelancerCardSkeleton";
@@ -10,6 +11,9 @@ import priceStore from "@/store/priceStore";
 import ListingSidebarModal5 from "../modal/ListingSidebarModal5";
 
 export default function Listing13({ freelancers = [], isLoading = false, skeletonCount = 12 }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
+
   const getCategory = listingStore((state) => state.getCategory);
   const priceRange = priceStore((state) => state.priceRange);
   const getLocation = listingStore((state) => state.getLocation);
@@ -75,8 +79,7 @@ export default function Listing13({ freelancers = [], isLoading = false, skeleto
     jobSuccess: typeof f?.job_success === "number" ? f.job_success : f?.jobSuccess ?? undefined,
   }));
 
-  const filtered = normalized
-    .slice(0, 12)
+  const filteredAll = normalized
     .filter(categoryFilter)
     .filter(priceFilter)
     .filter(locationFilter)
@@ -85,7 +88,10 @@ export default function Listing13({ freelancers = [], isLoading = false, skeleto
     .filter(languageFilter)
     .filter(sortByFilter);
 
-
+  // Slice by current page
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginated = filteredAll.slice(startIndex, endIndex);
 
   return (
     <>
@@ -99,12 +105,12 @@ export default function Listing13({ freelancers = [], isLoading = false, skeleto
                   <FreelancerCardSkeleton />
                 </div>
               ))
-              : filtered.length === 0 ? (
+              : filteredAll.length === 0 ? (
                 <div className="col-12 text-center">
                   <p>No Freelancer found at the moment</p>
                 </div>
               ) : (
-                filtered.map((item, i) => (
+                paginated.map((item, i) => (
                   <div key={i} className="col-md-6 col-lg-4 col-xl-3">
                     <FreelancerCard1 data={item} />
                   </div>
@@ -115,7 +121,12 @@ export default function Listing13({ freelancers = [], isLoading = false, skeleto
             <PaginationSkeleton />
           ) : (
             <div className="row mt30">
-              <Pagination1 totalItems={filtered.length} itemsPerPage={12} />
+              <Pagination1
+                totalItems={filteredAll.length}
+                itemsPerPage={itemsPerPage}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+              />
             </div>
           )}
         </div>

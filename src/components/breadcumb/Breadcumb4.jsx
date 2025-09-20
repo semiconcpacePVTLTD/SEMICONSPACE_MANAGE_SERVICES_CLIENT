@@ -51,7 +51,7 @@ export default function Breadcumb4() {
                     Work with talented people at the most affordable price to get the most
                     out of your time and cost
                   </p>
-                  <div className="d-flex align-items-center">
+                  {/* <div className="d-flex align-items-center">
                     <a
                       onClick={() => setToggler(!toggler)}
                       className="video-btn mr10 popup-iframe popup-youtube"
@@ -59,7 +59,7 @@ export default function Breadcumb4() {
                       <i className="fal fa-play" />
                     </a>
                     <h6 className="mb-0">How Freeio Works</h6>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>

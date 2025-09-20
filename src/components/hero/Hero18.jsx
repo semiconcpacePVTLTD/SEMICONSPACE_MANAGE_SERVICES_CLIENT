@@ -65,7 +65,7 @@ export default function Hero18({ service, services, freelancers }) {
               </div>
               <div className="advance-search-tab bgc-white p10 bdrs4-sm bdrs60 banner-btn position-relative zi1 animate-up-3 mt30">
                 <div className="row">
-                  <div className="col-md-5 col-lg-6 col-xl-6">
+                  <div className="col-md-9 col-lg-10 col-xl-9">
                     <div className="advance-search-field mb10-sm">
                       <HeroSearchEnhanced
                         services={services || []}
@@ -73,45 +73,7 @@ export default function Hero18({ service, services, freelancers }) {
                       />
                     </div>
                   </div>
-                  <div className="col-md-4 col-lg-4 col-xl-3">
-                    <div className="bselect-style1  bdrl1 bdrn-sm">
-                      <div className="dropdown bootstrap-select">
-                        <button
-                          type="button"
-                          className="btn dropdown-toggle btn-light"
-                          data-bs-toggle="dropdown"
-                        >
-                          <div className="filter-option">
-                            <div className="filter-option-inner">
-                              <div className="filter-option-inner-inner">
-                                {selectedRole !== null ? selectedRole : "Choose Category"}
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                        <div className="dropdown-menu ">
-                          <div className="inner show">
-                            <ul className="dropdown-menu inner show">
-                              {roleOptions.map((item, index) => (
-                                <li
-                                  onClick={() => setSelectedRole(item)}
-                                  key={index}
-                                  className="selected active"
-                                >
-                                  <a
-                                    className={`dropdown-item selected ${selectedRole === item ? "active" : ""
-                                      }`}
-                                  >
-                                    <span className="text">{item}</span>
-                                  </a>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Category dropdown removed as requested */}
                   <div className="col-md-3 col-lg-2 col-xl-3">
                     <div className="text-center text-xl-start">
                       <button
