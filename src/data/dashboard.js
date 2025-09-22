@@ -1,10 +1,10 @@
 export const dasboardNavigation = [
-  {
-    id: 1,
-    name: "Dashboard",
-    icon: "flaticon-home",
-    path: "/dashboard",
-  },
+  // {
+  //   id: 1,
+  //   name: "Dashboard",
+  //   icon: "flaticon-home",
+  //   path: "/dashboard",
+  // },
   // {
   //   id: 2,
   //   name: "My Proposals",
@@ -17,6 +17,12 @@ export const dasboardNavigation = [
   //   icon: "flaticon-like",
   //   path: "/saved",
   // },
+    {
+    id: 11,
+    name: "Manage Tickets",
+    icon: "flaticon-content",
+    path: "/manage-projects",
+  },
   {
     id: 4,
     name: "Manage Projects",
@@ -67,12 +73,7 @@ export const dasboardNavigation = [
   //   icon: "flaticon-briefcase",
   //   path: "/manage-jobs",
   // },
-  {
-    id: 11,
-    name: "Manage Tickets",
-    icon: "flaticon-content",
-    path: "/manage-projects",
-  },
+
   // {
   //   id: 12,
   //   name: "Add Services",

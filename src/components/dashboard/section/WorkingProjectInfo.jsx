@@ -40,7 +40,7 @@ export default function WorkingProjectInfo() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  useEffect(() => {
+  const fetchProjects = () => {
     function getRoleId() {
       try {
         const direct = localStorage.getItem("role_id") ?? localStorage.getItem("roleid");
@@ -132,6 +132,11 @@ export default function WorkingProjectInfo() {
     return () => {
       mounted = false;
     };
+  };
+
+  useEffect(() => {
+    const cleanup = fetchProjects();
+    return cleanup;
   }, []);
 
   const filtered = useMemo(() => {
@@ -202,7 +207,7 @@ export default function WorkingProjectInfo() {
                     {!loading &&
                       !error &&
                       paginatedProjects.map((p) => (
-                        <ManageProjectCard key={p._id || p.projectId} project={p} />
+                        <ManageProjectCard key={p._id || p.projectId} project={p} onRefresh={fetchProjects} />
                       ))}
                   </tbody>
                 </table>

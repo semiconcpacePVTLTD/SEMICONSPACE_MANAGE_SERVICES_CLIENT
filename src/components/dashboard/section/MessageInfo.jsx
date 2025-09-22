@@ -212,12 +212,20 @@ export default function MessageInfo({ projectId }) {
   }
   // Currency formatter for display
   const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
-  function initialsFrom(text) {
-    const str = String(text || "?").trim();
-    const parts = str.split(/\s+/).filter(Boolean);
-    const letters = (parts[0]?.[0] || "?") + (parts[1]?.[0] || "");
-    return letters.toUpperCase();
+function initialsFrom(category, id) {
+  const cleanCategory = String(category || "").trim().replace(/_/g, " ");
+  const firstCategoryChar = cleanCategory.charAt(0) || "?";
+
+  // Handle ticket_id, skip "TID-" if present
+  let cleanId = String(id || "").trim();
+  if (cleanId.startsWith("TID-")) {
+    cleanId = cleanId.substring(4); // remove "TID-"
   }
+  const firstIdChar = cleanId.charAt(0) || "?";
+
+  return (firstCategoryChar + firstIdChar).toUpperCase();
+}
+
   function statusColor(status) {
     const s = String(status || "").toLowerCase();
     if (s.includes("open")) return "#22c55e"; // green
@@ -495,11 +503,12 @@ export default function MessageInfo({ projectId }) {
 
   // Milestone helpers
   function splitEqually(total) {
+    // Default split: 20% (Advance), 40% (Midway), 40% (Final)
     const t = Number(total) || 0;
-    const one = Math.floor((t / 3) * 100) / 100; // 2 decimals
-    const two = Math.floor((t / 3) * 100) / 100;
-    const last = Math.round((t - one - two) * 100) / 100;
-    return [one, two, last];
+    const advance = Math.round(t * 0.2 * 100) / 100;
+    const midway = Math.round(t * 0.4 * 100) / 100;
+    const final = Math.round((t - advance - midway) * 100) / 100; // keep sum === total
+    return [advance, midway, final];
   }
   function rebalanceMilestones(changedIdx, newVal) {
     setForm((prev) => {
@@ -749,13 +758,22 @@ export default function MessageInfo({ projectId }) {
               const senderName2 = getUserNameFromStorage() || localStorage.getItem("name") || "";
               const sendEndpoint = `${baseURL}/tickets-service/${encodeURIComponent(newTicketId)}/messages`;
 
-              // Send PDF as attachment so it shows as a clickable link in chat
+              // Send a system payment request message with attachment:
+              // - If pdf_url present, attach it; else attach the get-milestones API link (JSON)
+              // - Include TOTAL_AMOUNT_REQUESTED in text to trigger Pay Now UI
+              const totalAmountM =
+                Number(payloadM?.total_amount) ||
+                (Array.isArray(payloadM?.finalized_milestones)
+                  ? payloadM.finalized_milestones.reduce((s, x) => s + (Number(x?.amount) || 0), 0)
+                  : 0);
+              const getMilestonesUrl = `${baseURL}/tickets-service/get-milestones/${encodeURIComponent(projectId)}`;
+
               const msgBody = {
-                sender_id: String(raisedById || ""),
-                sender: String(senderName2 || ""),
-                role_id: Number(roleId || 0),
-                text: "Ticket created successfully. Preparing details…",
-                ...(pdfUrl ? { attachments: [String(pdfUrl)] } : {}),
+                sender_id: "system",
+                sender: "System",
+                role_id: 3, // mark as system to show Pay Now prompt in UI
+                text: `Payment requested. TOTAL_AMOUNT_REQUESTED=${totalAmountM}. Finalized milestones are ready. Please review and click Pay Now to proceed.`,
+                attachments: [String(pdfUrl || getMilestonesUrl)],
               };
 
               await fetch(sendEndpoint, {
@@ -1049,15 +1067,24 @@ export default function MessageInfo({ projectId }) {
                         <div className="d-flex align-items-center">
                           {/* Avatar */}
                           <div className="rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: 40, height: 40, background: "#f1f5f9", color: "#334155", fontWeight: 600 }}>
-                            {initialsFrom(category || id)}
+  {initialsFrom(category, id)}
                           </div>
                           <div className="flex-grow-1 overflow-hidden">
                             <div className="d-flex align-items-center justify-content-between">
-                              <div className="fw-semibold text-truncate" title={String(id)}>{shortenId(id)}</div>
+                            
+<div className="fw-semibold text-truncate" title={category}>
+  {category
+    ? category
+        .replace(/_/g, " ")                // replace underscores with spaces
+        .toLowerCase()                     // make all lowercase
+        .replace(/\b\w/g, (c) => c.toUpperCase()) // capitalize first letter of each word
+    : "—"}
+</div>
+
                               <div className="small text-muted ms-2">{updatedAt ? formatISTTime(updatedAt) : ""}</div>
                             </div>
                             <div className="d-flex align-items-center text-muted small">
-                              <span className="text-truncate" title={category}>{category || "—"}</span>
+                              <span className="text-truncate"title={String(id)}>{shortenId(id)} </span>
                               <span className="ms-2" style={{ display: "inline-flex", alignItems: "center" }}>
                                 <span className="me-1" style={{ width: 8, height: 8, borderRadius: 999, background: statusColor(status) }} />
                                 {String(status || "").toUpperCase()}
@@ -1127,7 +1154,7 @@ export default function MessageInfo({ projectId }) {
                         disabled={String(selectedTicket?.status || "").toLowerCase().includes("close")}
                         title={String(selectedTicket?.status || "").toLowerCase().includes("close") ? "Ticket is closed" : undefined}
                       >
-                        Update Milestone
+                       View / Update Milestone
                       </button>
                     )}
                     <button
@@ -1749,7 +1776,7 @@ export default function MessageInfo({ projectId }) {
       {/* Finalized Milestones View Modal (read-only) */}
       {finalizedModalOpen && (
         <div className="modal fade show" style={{ display: "block", background: "rgba(0,0,0,0.45)" }}>
-          <div className="modal-dialog modal-lg modal-dialog-centered">
+          <div className="modal-dialog modal-xxl modal-dialog-centered" style={{ maxWidth: "95vw", width: "95vw" }}>
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Milestone details</h5>
@@ -1881,6 +1908,12 @@ export default function MessageInfo({ projectId }) {
                             type="date"
                             className="form-control rounded"
                             value={m.start_date}
+                            // Midway must start on/after Advance end; Final on/after Midway end
+                            min={idx === 1
+                              ? ((milestoneDraft && milestoneDraft[0] && milestoneDraft[0].end_date) || "")
+                              : idx === 2
+                                ? ((milestoneDraft && milestoneDraft[1] && milestoneDraft[1].end_date) || "")
+                                : undefined}
                             onChange={(e) => handleDraftFieldChange(idx, "start_date", e.target.value)}
                           />
                         </div>
@@ -1892,6 +1925,8 @@ export default function MessageInfo({ projectId }) {
                             type="date"
                             className="form-control rounded"
                             value={m.end_date}
+                            // End date cannot be before the start date
+                            min={m.start_date || ""}
                             onChange={(e) => handleDraftFieldChange(idx, "end_date", e.target.value)}
                           />
                         </div>

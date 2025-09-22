@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 
-export default function ManageProjectCard({ project, actionsMode = "verify" }) {
+export default function ManageProjectCard({ project, actionsMode = "verify", onRefresh }) {
   // Core fields from payload (with fallbacks for minor key typos)
   const title = project?.projectTitle || "Untitled Project";
   const category = project?.serviceType || "—";
@@ -144,7 +144,8 @@ export default function ManageProjectCard({ project, actionsMode = "verify" }) {
 
   useEffect(() => {
     if (isModalOpen && milestones.length > 0) {
-      setSelectedMilestoneIndex(0);
+      const firstAvailable = milestones.findIndex((m) => !m?.approvalAt);
+      setSelectedMilestoneIndex(firstAvailable > -1 ? firstAvailable : 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectParam, isModalOpen]);
@@ -209,11 +210,14 @@ export default function ManageProjectCard({ project, actionsMode = "verify" }) {
       }
 
       setSubmitSuccess(data?.message || "Milestone uploaded successfully");
-      Swal.fire({ icon: "success", title: data?.message || "Milestone uploaded successfully" });
+      await Swal.fire({ icon: "success", title: data?.message || "Milestone uploaded successfully" });
 
       // Optionally clear fields
       setAttachmentFile(null);
       setDescription("");
+
+      // Trigger parent refresh after user confirms success
+      try { typeof onRefresh === "function" && onRefresh(); } catch {}
 
       // Close after a short delay so user can read success
       setTimeout(() => {
@@ -260,64 +264,63 @@ export default function ManageProjectCard({ project, actionsMode = "verify" }) {
           <span className="fz15 fw400">{category}</span>
         </td>
         <td className="d-flex gap-2 align-items-center">
-          {(roleId === 2 || roleId === 3) && (
+          {actionsMode !== "tickets" && (roleId === 2 || roleId === 3) && (
             <button
-              className="btn btn-thm upload-ms-btn rounded-pill px-3 fw-bold d-inline-flex align-items-center"
+              className="ud-btn btn-dark default-box-shadow2"
               onClick={handleOpenModal}
-              disabled={milestones.length === 0}
+              disabled={milestones.length === 0 || milestones.every(m => !!m?.approvalAt)}
+              title={milestones.length === 0 ? "No milestones available" : (milestones.every(m => !!m?.approvalAt) ? "All milestones are approved" : "Upload milestone")}
             >
-              <span>Upload Milestone</span>
+              <span>{milestones.length === 0 ? "No milestones available" : (milestones.every(m => !!m?.approvalAt) ? "All milestones are approved" : "Upload Milestone")}</span>
             </button>
           )}
 
-          {roleId === 1 && (
+          {roleId === 1 && actionsMode !== "tickets" && (
             (() => {
               // Determine if any milestone has uploadHistory entries
               const msWithUploads = (milestones || []).filter((m) => Array.isArray(m?.uploadHistory) && m.uploadHistory.length > 0);
               const hasUploads = msWithUploads.length > 0;
+              // Determine if all milestones are already approved
+              const allApproved = (milestones || []).length > 0 && (milestones || []).every((m) => !!m?.approvalAt);
 
-              if (actionsMode === "tickets") {
-                // Manage-projects: show only View Tickets
-                // Pass project details via navigation state so Message page can use them
-                return (
-                  <Link
-                    to={{ pathname: "/dashboard/message", search: projectParam ? `?projectId=${encodeURIComponent(projectParam)}` : "" }}
-                    state={{
-                      projectId: projectParam,
-                      project,
-                      freelancerName,
-                      clientName: userName,
-                      clientEmail: userEmail,
-                      freelancerEmail,
-                    }}
-                    className="ud-btn btn-dark default-box-shadow2"
-                    title="View Tickets"
-                  >
-                    <i className="far fa-ticket-alt me-2" />
-                    <span>View Tickets</span>
-                  </Link>
-                );
-              }
-// Default (working-projects): Verify Milestones
-return (
-  <button
-    className="ud-btn btn-dark default-box-shadow2"
-    onClick={() => {
-      if (!hasUploads) return;
-      const firstIdx = (milestones || []).findIndex(
-        (m) => Array.isArray(m?.uploadHistory) && m.uploadHistory.length > 0
-      );
-      setVerifyMilestoneIndex(firstIdx > -1 ? firstIdx : 0);
-      setIsVerifyModalOpen(true);
-    }}
-    disabled={!hasUploads}
-    title={hasUploads ? "Verify milestones" : "No updates to verify"}
-  >
-    <span>Verify Milestones</span>
-  </button>
-);
-
+              // Default (working-projects): Verify Milestones
+              return (
+                <button
+                  className="ud-btn btn-dark default-box-shadow2"
+                  onClick={() => {
+                    if (!hasUploads) return; // allow opening even if all approved to view history
+                    const firstIdx = (milestones || []).findIndex(
+                      (m) => Array.isArray(m?.uploadHistory) && m.uploadHistory.length > 0
+                    );
+                    setVerifyMilestoneIndex(firstIdx > -1 ? firstIdx : 0);
+                    setIsVerifyModalOpen(true);
+                  }}
+                  disabled={!hasUploads}
+                  title={allApproved ? "View upload history" : (hasUploads ? "Verify milestones" : "No updates to verify")}
+                >
+                  <span>{allApproved ? "Verified all milestones" : (hasUploads ? "Verify Milestones" : "No updates to verify")}</span>
+                </button>
+              );
             })()
+          )}
+
+          {actionsMode === "tickets" && (
+            <Link
+              to={{ pathname: "/dashboard/message", search: projectParam ? `?projectId=${encodeURIComponent(projectParam)}` : "" }}
+              state={{
+                projectId: projectParam,
+                project,
+                freelancerName,
+                clientName: userName,
+                clientEmail: userEmail,
+                freelancerEmail,
+              }}
+              className="ud-btn btn-dark default-box-shadow2"
+              title="View Tickets"
+            >
+              <i className="far fa-ticket-alt me-2" />
+              <span>View Tickets</span>
+            </Link>
           )}
         </td>
       </tr>
@@ -369,19 +372,31 @@ return (
                   <div className="text-muted">No milestones available</div>
                 ) : (
                   <div className="d-flex flex-column gap-2">
-                    {milestones.map((m, idx) => (
-                      <label key={`${projectParam}-ms-${idx}`} className="d-flex align-items-center gap-2">
-                        <input
-                          type="radio"
-                          name={`milestone-${projectParam}`}
-                          value={String(idx)}
-                          checked={selectedMilestoneIndex === idx}
-                          onChange={(e) => setSelectedMilestoneIndex(Number(e.target.value))}
-                          disabled={saving}
-                        />
-                        <span>{m?.title || "Untitled Milestone"}</span>
-                      </label>
-                    ))}
+                    {milestones.map((m, idx) => {
+                      const isApproved = !!m?.approvalAt;
+                      return (
+                        <label key={`${projectParam}-ms-${idx}`} className="d-flex align-items-center gap-2">
+                          <input
+                            type="radio"
+                            name={`milestone-${projectParam}`}
+                            value={String(idx)}
+                            checked={selectedMilestoneIndex === idx}
+                            onChange={(e) => setSelectedMilestoneIndex(Number(e.target.value))}
+                            disabled={saving || isApproved}
+                          />
+                          <span className={isApproved ? "text-muted" : ""}>
+  {m?.title || "Untitled Milestone"}
+  {isApproved && (
+    <span className="ms-2 d-inline-flex align-items-center text-success">
+      <i className="far fa-check-circle me-1" title="Approved" />
+      Approved
+    </span>
+  )}
+</span>
+
+                        </label>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -511,92 +526,105 @@ return (
                           </td>
                           <td className="text-end">
                             <div className="d-flex gap-2 justify-content-end">
-                              <button
-                                className="btn btn-outline-success btn-sm rounded-pill"
-                                title="Approve"
-                                aria-label="Approve"
-                                disabled={!!verifyingId || isApproved || isRejected}
-                                onClick={async () => {
-                                  const userId = getUserIdFromStorage();
-                                  const freelancerID = project?.freelancerId || getFreelancerIdFromStorage();
-                                  if (!userId || !projectParam || !freelancerID) {
-                                    Swal.fire({ icon: "error", title: "Missing IDs to approve" });
-                                    return;
-                                  }
-                                  const body = {
-                                    userId: String(userId),
-                                    projectId: String(projectParam),
-                                    freelancerID: String(freelancerID),
-                                    finalized_milestones: [{ title: String(ms?.title || ""), amount: Number(ms?.amount ?? 0) }],
-                                  };
-                                  try {
-                                    setVerifyingId(`approve-${idx}`);
-                                    const res = await fetch("http://192.168.1.222:9006/project-service/userMilestoneApproval", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify(body),
-                                    });
-                                    const data = await res.json().catch(() => ({}));
-                                    if (!res.ok) throw new Error(data?.message || `Approve failed (${res.status})`);
-                                    Swal.fire({ icon: "success", title: data?.message || "Milestone approved" });
-                                    setIsVerifyModalOpen(false);
-                                  } catch (err) {
-                                    Swal.fire({ icon: "error", title: err?.message || "Approve failed" });
-                                  } finally {
-                                    setVerifyingId("");
-                                  }
-                                }}
-                              >
-                                {verifyingId === `approve-${idx}` ? "..." : <i className="far fa-check-circle" />}
-                              </button>
-                              <button
-                                className="btn btn-outline-danger btn-sm rounded-pill"
-                                title="Reject"
-                                aria-label="Reject"
-                                disabled={!!verifyingId || isApproved || isRejected}
-                                onClick={async () => {
-                                  const { value: reason } = await Swal.fire({
-                                    title: "Reject milestone",
-                                    input: "text",
-                                    inputLabel: "Reason",
-                                    inputPlaceholder: "Enter a rejection reason",
-                                    showCancelButton: true,
-                                  });
-                                  if (reason === undefined) return; // cancelled
+                              {(() => {
+                                const hardDisabled = isApproved || isRejected; // approved/rejected state
+                                return (
+                                  <>
+                                    <button
+                                      className={`btn btn-sm rounded-pill ${hardDisabled ? 'btn-outline-secondary' : 'btn-outline-success'}`}
+                                      title="Approve"
+                                      aria-label="Approve"
+                                      disabled={!!verifyingId || hardDisabled}
+                                      onClick={async () => {
+                                        const userId = getUserIdFromStorage();
+                                        const freelancerID = project?.freelancerId || getFreelancerIdFromStorage();
+                                        if (!userId || !projectParam || !freelancerID) {
+                                          Swal.fire({ icon: "error", title: "Missing IDs to approve" });
+                                          return;
+                                        }
+                                        const body = {
+                                          userId: String(userId),
+                                          projectId: String(projectParam),
+                                          freelancerID: String(freelancerID),
+                                          finalized_milestones: [{ title: String(ms?.title || ""), amount: Number(ms?.amount ?? 0) }],
+                                        };
+                                        try {
+                                          setVerifyingId(`approve-${idx}`);
+                                          const res = await fetch("http://192.168.1.222:9006/project-service/userMilestoneApproval", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify(body),
+                                          });
+                                          const data = await res.json().catch(() => ({}));
+                                          if (!res.ok) throw new Error(data?.message || `Approve failed (${res.status})`);
+                                          await Swal.fire({ icon: "success", title: data?.message || "Milestone approved" });
+                                          try { typeof onRefresh === "function" && onRefresh(); } catch {}
+                                          setIsVerifyModalOpen(false);
+                                        } catch (err) {
+                                          Swal.fire({ icon: "error", title: err?.message || "Approve failed" });
+                                        } finally {
+                                          setVerifyingId("");
+                                        }
+                                      }}
+                                    >
+                                      {verifyingId === `approve-${idx}` ? "..." : (
+                                        <i className={`far fa-check-circle ${hardDisabled ? 'text-muted' : ''}`} />
+                                      )}
+                                    </button>
+                                    <button
+                                      className={`btn btn-sm rounded-pill ${hardDisabled ? 'btn-outline-secondary' : 'btn-outline-danger'}`}
+                                      title="Reject"
+                                      aria-label="Reject"
+                                      disabled={!!verifyingId || hardDisabled}
+                                      onClick={async () => {
+                                        const { value: reason } = await Swal.fire({
+                                          title: "Reject milestone",
+                                          input: "text",
+                                          inputLabel: "Reason",
+                                          inputPlaceholder: "Enter a rejection reason",
+                                          showCancelButton: true,
+                                        });
+                                        if (reason === undefined) return; // cancelled
 
-                                  const userId = getUserIdFromStorage();
-                                  const freelancerID = project?.freelancerId || getFreelancerIdFromStorage();
-                                  if (!userId || !projectParam || !freelancerID) {
-                                    Swal.fire({ icon: "error", title: "Missing IDs to reject" });
-                                    return;
-                                  }
-                                  const body = {
-                                    userId: String(userId),
-                                    projectId: String(projectParam),
-                                    freelancerID: String(freelancerID),
-                                    finalized_milestones: [{ title: String(ms?.title || ""), status: "rejected" }],
-                                    rejectedDescription: String(reason || ""),
-                                  };
-                                  try {
-                                    setVerifyingId(`reject-${idx}`);
-                                    const res = await fetch("http://192.168.1.222:9006/project-service/userMilestoneRejected", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify(body),
-                                    });
-                                    const data = await res.json().catch(() => ({}));
-                                    if (!res.ok) throw new Error(data?.message || `Reject failed (${res.status})`);
-                                    Swal.fire({ icon: "success", title: data?.message || "Milestone rejected" });
-                                    setIsVerifyModalOpen(false);
-                                  } catch (err) {
-                                    Swal.fire({ icon: "error", title: err?.message || "Reject failed" });
-                                  } finally {
-                                    setVerifyingId("");
-                                  }
-                                }}
-                              >
-                                {verifyingId === `reject-${idx}` ? "..." : <i className="far fa-times-circle" />}
-                              </button>
+                                        const userId = getUserIdFromStorage();
+                                        const freelancerID = project?.freelancerId || getFreelancerIdFromStorage();
+                                        if (!userId || !projectParam || !freelancerID) {
+                                          Swal.fire({ icon: "error", title: "Missing IDs to reject" });
+                                          return;
+                                        }
+                                        const body = {
+                                          userId: String(userId),
+                                          projectId: String(projectParam),
+                                          freelancerID: String(freelancerID),
+                                          finalized_milestones: [{ title: String(ms?.title || ""), status: "rejected" }],
+                                          rejectedDescription: String(reason || ""),
+                                        };
+                                        try {
+                                          setVerifyingId(`reject-${idx}`);
+                                          const res = await fetch("http://192.168.1.222:9006/project-service/userMilestoneRejected", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify(body),
+                                          });
+                                          const data = await res.json().catch(() => ({}));
+                                          if (!res.ok) throw new Error(data?.message || `Reject failed (${res.status})`);
+                                          await Swal.fire({ icon: "success", title: data?.message || "Milestone rejected" });
+                                          try { typeof onRefresh === "function" && onRefresh(); } catch {}
+                                          setIsVerifyModalOpen(false);
+                                        } catch (err) {
+                                          Swal.fire({ icon: "error", title: err?.message || "Reject failed" });
+                                        } finally {
+                                          setVerifyingId("");
+                                        }
+                                      }}
+                                    >
+                                      {verifyingId === `reject-${idx}` ? "..." : (
+                                        <i className={`far fa-times-circle ${hardDisabled ? 'text-muted' : ''}`} />
+                                      )}
+                                    </button>
+                                  </>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>
